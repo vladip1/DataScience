@@ -115,10 +115,12 @@ v9 <- letters
 v10 <- LETTERS
 v9[5]
 v10[1:3]
+v10[c(5,15,22)]
 
 length(v10)
 v10[seq(1,26,3)]
 v10[seq(1,length(v10),3)]
+
 
 ### operations on numerical vectors
 a
@@ -192,6 +194,8 @@ m1 - t(m1)
 m1 + m2 ## doesn't work
 m1 + as.vector(m2) ## doesn't work
 
+dim(m1)
+dim(m2)
 
 ## Multiplication/Division
 ## m1 [4x4], m2 [1x4], m3 [4x2]
@@ -225,6 +229,8 @@ I
 s
 solve(s)
 s %*% solve(s)
+
+?solve
 
 ##########################
 ### Arrays
@@ -277,8 +283,13 @@ str(l1)
 class(l1)
 summary(l1)
 
+l1$
+
 l2 <- list(letters[1:10])
 l2
+
+l2[[1]][2]
+
 
 l3 <- list(c(TRUE,TRUE,TRUE,FALSE,TRUE,FALSE,FALSE))
 l3
@@ -321,7 +332,9 @@ l5[[1]]
 l5[[2]]
 l5[[3]]
 
-l5[[3]]$model
+s <- l5[[3]]$model
+
+
 l5[[3]]$price
 l5[[3]]$mpg
 
@@ -353,10 +366,12 @@ l6$n
 ### The length of each vector has to be the same
 
 a <- c(1,2,3,4,5,6,7,8)
-b <- c("a","b","c","d","e","f","g","h")
+b <- c("b","a","c","d","e","f","g","h")
 c <- c(TRUE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,FALSE)
 d <- c(24.233,1.45,10,83.62234,333.02,0.001,2.1,0.1001)
 df <- data.frame(a,b,c,d)
+
+df[seq(1,8,2),]
 
 class(df)
 str(df)
@@ -381,6 +396,7 @@ df$c <- NULL
 df[,-3]
 
 df[-5,]
+
 
 #########################################
 ### Data type conversion
@@ -416,6 +432,7 @@ a <- c('2015-04-22',"2017/03/06","16/03/2011")
 a
 b <- as.Date(a)
 b
+
 
 ### missing values
 c <- NA
