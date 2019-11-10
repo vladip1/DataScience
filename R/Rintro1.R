@@ -438,6 +438,9 @@ b
 c <- NA
 is.na(c)
 
+head(datasets::mtcars)
+
+
 ### NULL deletes a column in a data frame 
 df <- mtcars
 df$mpg <- NULL
@@ -456,6 +459,11 @@ guys <- data.frame(name = names.vec,
                    city = city.vec,
                    has.pet = has.pet.vec,
                    stringsAsFactors = F)
+
+head(guys)
+
+
+
 
 print(guys)
 summary(guys)

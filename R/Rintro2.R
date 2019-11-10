@@ -39,6 +39,7 @@ b <- c(20, 30, 33, 28, 34, 21, 26, 29, 20, 25)
 ### bind rows
 c <- rbind(a,b)
 c
+
 class(c)
 str(c)
 dim(c)
@@ -73,7 +74,7 @@ class(s1)
 str(s1)
 summary(s1)
 
-s2 <- paste("I","love","data","science",sep="_")
+s2 <- paste("I","love","data","science",sep=":-)")
 s2
 class(s2)
 str(s2)
@@ -97,6 +98,11 @@ s6 <- paste0("I","love","data","science")
 s6
 class(s6)
 str(s6)
+
+
+s10<-c('x1', 'x2', 'x3', 'x4')
+s11<- paste('y', paste(s10, collapse = "+"), sep ='~')
+s11
 
 ###################################
 ### Tranformation
@@ -156,6 +162,11 @@ format(dt,format="%I:%M %p")  ## time format: '05:05 PM'
 timestamp()
 date()
 
+d <- "10-02-2018"
+
+dd<- as.Date(d, format = "%d-%m-%Y")
+
+
 ### Sequences
 1:10
 seq(1,10,2)
@@ -165,7 +176,7 @@ length(c(1,2,3,4,5,6,7,8,9,10))
 ### randomization
 sample(c(1,2,3,4,5,6,7,8,9,10),3)
 for (n in 1:4) {
-  print(sample(c(1,2,3,4,5,6,7,8,9,10),3))
+  print(sample(c(1,2,3,4,5,6,7,8,9,10),n))
 }
 
 set.seed(123)
@@ -182,10 +193,10 @@ runif(n=10, min=0, max=1)  ## 10 random numbers between 0 and 1
 runif(n=5, min=-3, max=3)  ## 3 random numbers between -3 and 3
 
 ## normal distribution
-rnorm(n=10, mean=5, sd=2)
+hist(rnorm(n=1000000, mean=0, sd=123))
 
 ## binomial distribution
-rbinom(n=10, size=1, prob=0.4)
+hist(rbinom(n=10, size=1, prob=0.4))
 
 ################################################################
 ######  Conditional expressions - return a boolean response
@@ -248,9 +259,12 @@ l1
 
 
 lapply(l1, sum)
+lapply(l1, colSums)
+lapply(l1, rowSums)
+
 ### We can use the selection operator `[` for extracting values at the same position
 ### Get the element of the third column of each element of a list 
-lapply(l1, "[",,3)  
+lapply(l1, '[',,3)  
 
 ### Get the element of the first row of each element of a list 
 lapply(l1, "[",1,)  
@@ -263,7 +277,7 @@ l1
 
 ### We can use the selection operator `[` for extracting values at the same position
 ### the following extract the first value of each element in the list 
-sapply(l1, "[",1,simplify = F)
+sapply(l1, "[",2,simplify = F)
 
 ### This will extract matrices containing the three first rows and columns of each element 
 sapply(l1, "[",1:3,1:3,simplify = F)
@@ -287,7 +301,7 @@ m1 == m2
 mapply(rep, LETTERS[1:6], 4, SIMPLIFY = FALSE)
 
 ### what will this generate?
-mapply(rep, LETTERS[1:6], 6:1, SIMPLIFY = FALSE)
+mapply(rep, LETTERS[1:6], 6:6, SIMPLIFY = FALSE)
 
 #####################################################################
 ############  Programming with R
@@ -304,9 +318,9 @@ if( x > 1 ) { y = 3 }
 c(x,y)
 
 ###  if (condition) { ... } else { ... }
-x <- 5
+x <- 6
 y <- 0
-if( x > 5 ) { y = 10 } else { y = 5 }
+if( x > 5 ) { y = 10; y = 8 } else { y = 5 }
 c(x,y)
 
 ###  ifelse(condition, value1, value2) 
@@ -324,6 +338,7 @@ for(x in 1:10) {
   y <- y + x
   print(c(x,y))
 }
+
 y
 
 ### exit prematurely from the for loop
@@ -363,7 +378,7 @@ repeat {
     print(paste("Counting...",x))
   } else {
     print("We are done !!!")
-    break
+      break
   }
 }
 
