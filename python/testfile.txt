@@ -1,0 +1,12 @@
+# HELP dp_inbound_kbytes_total The total number of HTTP requests.
+# TYPE dp_inbound_kbytes_total counter
+dp_inbound_kbytes_total{policy="Best",destination="0"} 3670158 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="1"} 3670156 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="2"} 3670156 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="3"} 3670159 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="4"} 3670156 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="5"} 3670156 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="6"} 3670157 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="7"} 3670159 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="8"} 3670155 1573670155
+dp_inbound_kbytes_total{policy="Best",destination="9"} 3670156 1573670155

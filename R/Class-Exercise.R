@@ -111,11 +111,8 @@ for (z in 1:100000)
 
 a<-c('well', 'you', 'merged', 'vectors', 'one')
 b<-c('done', 'have', 'two', 'into', 'phrase')
+
 paste(a,b,collapse = " ")
-
-test<-1:10000
-
-
 
 
 res<-NULL
@@ -126,8 +123,54 @@ for (x in 1:length(a))
 }
 res
 
+require("dplyr")
+require("nycflights13")
+if (require("nycflights13")) {
+  carriers <- group_by(flights, carrier)
+  summarise(carriers, n())
+  mutate(carriers, n = n())
+  filter(carriers, n() < 100)
+}
 
+require(dplyr)
 
+library(dplyr)
+
+nasa1 <- as_tibble(nasa)
+
+class(nasa1)
+
+nasa1 %>%
+  filter(29.56< lat & lat <= 33.09 & -110.93 < long & long <= -90.55) %>%
+  mutate(temp_ratio = temperature/surftemp) %>%
+  group_by(year) %>% 
+  summarise(pressure_average = mean(pressure,na.rm=TRUE),
+            pressure_sd = sd(pressure,na.rm=TRUE),
+            temp_ratio_average = mean(pressure,na.rm=TRUE),
+            temp_ratio_sd = sd(pressure,na.rm=TRUE),
+            ozone_average = mean(ozone,na.rm=TRUE),
+            ozone_sd = sd(ozone,na.rm=TRUE)) %>%
+  arrange(desc(ozone_average))
+            
+
+mysw <- starwars %>%
+  group_by(homeworld) %>% 
+  mutate(male = ifelse(gender == "male",1,0),
+         female = ifelse(gender == "female", 1,0),
+         nogender = ifelse(is.na(gender)==T,1,0),
+         attack_of_clones = ifelse("Attack of the Clones" %in% films,1,0)) %>%
+  filter(attack_of_clones == 1) %>%
+  summarise(height_min=min(height,na.rm=TRUE),
+            height_mean=mean(height,na.rm=TRUE),
+            height_max=max(height,na.rm=TRUE),
+            mass_min=min(mass,na.rm=TRUE),
+            mass_mean=mean(mass,na.rm=TRUE),
+            mass_max=max(mass,na.rm=TRUE),
+            males = sum(male, na.rm=TRUE),
+            females = sum(female, na.rm=TRUE),
+            nogender = sum(nogender, na.rm=TRUE),
+            num_individuals=n()) %>%
+  arrange(desc(num_individuals))
 
 
 

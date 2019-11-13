@@ -18,7 +18,7 @@ class(iris2)
 iris
 iris2
 
-#### selection of columns
+#### selection of columns along with pipeline 
 iris2 %>% select(Sepal.Length, Sepal.Width)
 
 ### selection of rows using a condition
@@ -73,7 +73,10 @@ iris3 %>% group_by(Species) %>% summarise(cnt = n())
 ### the movie 'starwars' that appeared in the film "Attack of the Clones" 
 ### and by their homeworld procedence
 
+
 head(starwars)
+
+class(starwars)
 
 starwars$films
 
@@ -95,6 +98,8 @@ mysw <- starwars %>%
             nogender = sum(nogender, na.rm=TRUE),
             num_individuals=n()) %>%
   arrange(desc(num_individuals))
+
+
 
 
 ##############################
@@ -155,6 +160,9 @@ ggplot(data=iris3) +
   geom_point(mapping = aes(x = Sepal.ratio, y = Petal.ratio, col=Species)) +
   facet_grid(round(Sepal.Length,0) ~ round(Petal.Length,0))
 
+round(iris3$Sepal.Length,0)
+iris3$Sepal.Length
+
 ########### Combining two geometric objects into one graph
 
 ggplot(data=iris3) +
@@ -197,7 +205,7 @@ ggplot(data = iris3) +
   geom_histogram(mapping = aes(x=Sepal.Length))
 
 ggplot(data = iris3,mapping = aes(x=Sepal.Length)) + 
-  geom_histogram(bins = 30)
+  geom_histogram(bins = 15)
 
 ### Bar graph
 iris3 <- iris3 %>%
