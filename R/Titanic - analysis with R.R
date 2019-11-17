@@ -5,7 +5,7 @@ library(dplyr)
 library(ggplot2)
 
 ### Import the titanic dataset
-titanic <- read.csv(paste(path,"../data/titanic.csv",sep="/"))
+titanic <- read.csv("../data/titanic.csv")
 head(titanic)
 
 ##################################################
@@ -15,7 +15,7 @@ passangers = nrow(titanic)
 survived = sum(titanic['Survived'])
 
 print(paste("We have", passangers, "passangers but only", survived, "of them survived (", 
-            survived/passangers*100, "%)"))
+            round(survived/passangers*100, 3), "%)"))
 
 ###################################################
 #### Missing values
@@ -42,6 +42,7 @@ table(sex=titanic$Sex, surv=titanic$Survived)
 
 ## using dplyr
 titanic %>% group_by(Sex) %>% summarise(count=n(),survived=sum(Survived),percent=(sum(Survived)/n()*100))
+
 
 ## Age distribution and survival
 ## Plot the Age frequencies of the passangers. (use an histogram)
@@ -73,6 +74,7 @@ titanic$AgeGroup[titanic$Age >= 13 & titanic$Age < 18] <- " 13-17"
 titanic$AgeGroup[titanic$Age >= 60] <- " 60+"
 titanic$AgeGroup[is.na(titanic$Age)==TRUE] <- "No Age"
 
+str(titanic)
 table(titanic$AgeGroup)
 
 ### using which()
@@ -83,7 +85,7 @@ titanic$AgeGroup[which(titanic$Age >= 13 & titanic$Age < 18)] <- " 13-17"
 titanic$AgeGroup[which(titanic$Age >= 60)] <- " 60+"
 titanic$AgeGroup[which(is.na(titanic$Age)==TRUE)] <- "No Age"
 
-table(titanic$AgeGroup)
+table(factor(titanic$AgeGroup))
 
 ### using dplyr and ifelse()
 titanic <- titanic %>% 
@@ -102,7 +104,7 @@ titanic %>%
 # Age-Gender Survival
 # Where there differences on survival by age group and gender?
 
-titanic %>% 
+titanic %>% #select(*) %>%
   group_by(Sex,AgeGroup) %>% 
   summarise(count=n(),survived=sum(Survived),percent=(sum(Survived)/n()*100))
 
@@ -122,7 +124,9 @@ titanic %>%
 
 titanic$TravelAlone <- ifelse(titanic$SibSp==0 & titanic$Parch==0, 1, 0)
 
-titanic %>% 
+table(titanic$TravelAlone)
+
+titanic %>% filter(Embarked %in% c('C','Q')) %>%
   group_by(TravelAlone) %>% 
   summarise(count=n(),survived=sum(Survived),percent=(sum(Survived)/n()*100))
 
@@ -202,6 +206,7 @@ titanic %>%
 words = paste(titanic$Name, collapse=" ")
 class(words)
 print(words)
+
 
 ## we can use the :punct: opperand from the re (regular expression) package:
 

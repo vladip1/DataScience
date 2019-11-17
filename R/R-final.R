@@ -20,6 +20,10 @@ library(dplyr)
 ## Q1. Count the number of students on each department¶
 ##############
 
+as_tibble(df) %>%
+  summarise(count<-n())
+
+
 
 ##############
 ## Q2. How many students have each course of the English department and the 
