@@ -461,10 +461,16 @@ mydata <- read.csv(file="iris.csv")
 class(mydata)
 str(mydata)
 
+library(readr)
+dataset <- read_csv(file="iris.csv")
+View(dataset)
+
+class(dataset)
+
 ####### Excel
 library(xlsx)
 df1 <- read.xlsx("excel-example.xlsx",sheetIndex = 1)
-df2 <- read.xlsx("excel-example.xlsx",sheetIndex = 2)
+df2 <- read.xlsx("excel-example.xlsx",sheetIndex = 2, endRow = 9)
 
 ### Write a data.frame to an excel file
 write.xlsx(df1, "one-sheet-example.xlsx", sheetName="Data Frame")
@@ -561,9 +567,12 @@ library(jsonlite)
 json_file <- "http://api.worldbank.org/country?per_page=10&region=OED&lendingtype=LNX&format=json"
 json_data <- fromJSON(json_file)
 
+class(json_data)
+
 json_data[[1]]$per_page
 
 json_df <- as.data.frame(json_data)
+
 
 
 ########################
