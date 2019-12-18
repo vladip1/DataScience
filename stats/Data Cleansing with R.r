@@ -187,8 +187,10 @@ par(mfrow=c(4,3))
 for(v in names(animals2)) {
     scatter.smooth(animals.imp[[v]] ~ animals[idx,"species"], main=v, xlab="animals",ylab=v, family="symmetric",
                   lpars =list(col = "red", lwd = 2, lty = 2), col=misspoints[idx,v]+1)
+  
 }
-par(mfrow=c(1,1))
+
+scatter.smooth(animals.imp[[v]] ~ animals[idx,"species"])
 
 
 # library(mice)
