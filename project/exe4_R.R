@@ -1,122 +1,119 @@
-#install.packages("xlsReadWrite")
-#require(xlsReadWrite)
-#xls.getshlib()
-#df = read.xls("myfile.xls", sheet = 1)
+setwd("C://Users//Cherch//DataScience//project")
 
-install.packages("RODBC")
-require(RODBC)
-conn = odbcConnectExcel("../proj/BoxOffice - Data Retrieval Protocol.xlsx")
-sqlTables(conn)$TABLE_NAME # show all sheets
-df = sqlFetch(conn, "Sheet1") # read a sheet
-df = sqlQuery(conn, "select * from [Sheet1 $]") # read a sheet (alternative SQL sintax)
-close(conn) # close the connection to the file
-
-
-install.packages("XLConnect")
+#install.packages("openxlsx")
+require("openxlsx")
 require("tidyverse")
-
-require(XLConnect)
-
-wb = loadWorkbook("../project/BoxOffice - Data Retrieval Protocol.xlsx")
-
-protocol = readWorksheet(wb, sheet = "protocol", header = TRUE)
-
-head(protocol)
+require(devtools)
+library(dplyr)
 
 
-val_types <- protocol$Value.type
+protocol<-read.xlsx("../project/BoxOffice - Data Retrieval Protocol.xlsx", sheet = "protocol")
+load("../data/BoxOffice_ff.RData")
 
-dim(protocol)
-
-booleanEDA <- function(data, fun_xlab) {
+##########################################################################################
+# Function that print plot per variable type
+##########################################################################################
+doEDA <- function(data, i) {
   
-  print(summary(data))
+  column_name <- str_trim(protocol$Feature.name[i])
+  val.type <- str_trim(protocol$Value.type[i])
   
-  barplot(prop.table(table(data)),main=fun_xlab,xlab=fun_xlab)
+  cat(sprintf("Data.Type: %s\n", val.type))
   
-  print(table(data))
+  summary(data[column_name])
   
-  ggplot(data=movies)+
-    geom_density(aes(log(revenue), group=data, color=data))
-}
-
-head(protocol)
-
-categoricalEDA <- function(data) {
-  summary(movies$sw_lang_en)
-  barplot(prop.table(table(movies$sw_lang_en)))
-  table(movies$sw_lang_en)
-  plot(movies$revenue ~ movies$sw_lang_en)
-  ggplot(data=movies)+
-    geom_density(aes(log(revenue), group=movies$sw_lang_en, color=movies$sw_lang_en))
-}
-
-
-numericEDA <- function(data, column_name) {
-
-    print(column_name)
-    print(summary(data[column_name]))
+  summary(protocol$Value.type)
   
-    cat(sprintf("Data.Type: %s\n", protocol$Data.type[str_trim(protocol$Feature.name) == column_name]))
-    cat(sprintf("Unique.count: %s\n", protocol$Unique.count[str_trim(protocol$Feature.name) == column_name]))
+  if (!is.na(val.type) & val.type == "Numeric") {
+    val.min <-   as.numeric(str_trim(protocol$Min[i]))
+    val.max <- as.numeric(str_trim(protocol$Max[i]))
     
-
-    if (protocol$Data.type[str_trim(protocol$Feature.name) == column_name] == "Decimal" ||
-        protocol$Data.type[str_trim(protocol$Feature.name) == column_name] == "Integer") 
-    {
-      print("plot")
-      plot(movies$revenue ~ as.numeric(unlist(movies[column_name])), xlab=column_name)
-      
-      print("boxplot")
-      boxplot(data[column_name])
-    } 
-    else
-    {
-      print("barplot")
-      barplot(prop.table(table(data[column_name])))
+    
+    plot(data[column_name])
+    
+    plot(movies$revenue ~ as.numeric(unlist(data[column_name])), xlab=column_name)
+    
+    #if differencce between the min and max is bigger than 1000 present log
+    if ((val.max - val.min) > 1000) {
+      hist(log(data[column_name]+1))
+    } else {
+      hist(data[column_name])
     }
     
-    if (strtoi(str_trim(protocol$Unique.count[str_trim(protocol$Feature.name) == column_name])) < 10) {
-      print("density")
-      ggplot(data)+
-        geom_density(aes(log(revenue), group=data[column_name], color=data[column_name]))
+    # if differencce between the min and max is bigger than 1000 present log
+    if ((val.max - val.min) > 1000) {
+      boxplot(log(data[column_name]+1),main=column_name)
+    } else {
+      boxplot(data[column_name],main=column_name)
     }
-
-}
-
-
-numericEDA(movies, "budget")
-numericEDA(movies, "genre_drama")
-
-plot(movies$revenue ~ as.numeric(unlist(movies[column_name])))
-
-typeof(movies$revenue)
-
-  
-for (n in 1:2) {#nrow(protocol)){
-  if (protocol$Value.type[n] == "Numeric") {
-    print("NUM")
-    numericEDA(movies, str_trim(protocol$Feature.name[n]))
-    #print(protocol$Feature.name[n])
-  } else if (protocol$Value.type[n] == "Categorical") {
-    print("CAT")
+    
+    scatter.smooth(data[column_name] ~ movies$movie_id, main=column_name, xlab="movies",ylab=column_name, family="symmetric",
+                   lpars =list(col = "red", lwd = 2, lty = 2))
+    
+  } else if (!is.na(val.type) & val.type == "Categorical") {
+    barplot(prop.table(data[column_name]))
+    
+    table(data[column_name])
+    
+    plot(movies$revenue ~ as.numeric(unlist(movies[column_name])), xlab=column_name)
+    
+    ggplot(data)+
+      geom_density(aes(log(revenue), group=data[column_name], color=data[column_name]))
   }
 }
 
-movies["budget"]
-    
+##########################################################################################
+# clean the movies - replace all the NULL values with Na
+##########################################################################################
+cmovies<-movies
+for (n in 2:nrow(protocol)){
+  val<-str_trim(protocol$Null[n])
 
+  feature<-str_trim(protocol$Feature.name[n])
+  
+  # set the NULL value to be Na
+  if (!is.na(val) & (val == "0" || val == "1")) {
+    cmovies[feature]<- na_if(cmovies[feature], as.numeric(val))
+  }
+}
 
-summary(df)
+##########################################################################################
+# print the summary and graphs per variable on cmovies 
+##########################################################################################
+# Run in loop over the parameters and plot graph based on the variable type
+for (n in 2:5) {#nrow(protocol)){
+  doEDA(cmovies, n)
+}
 
-df$Value.type
+##########################################################################################
+# Correlation Graph (using Spearman)
+##########################################################################################
 
+##########################################################################################
+# Missing Values heatmap
+##########################################################################################
 
-load("../data/BoxOffice_ff.RData")
+##########################################################################################
+# Outliers: checking distribution with and without outliers
+##########################################################################################
 
-summary(movies)
+##########################################################################################
+# Outliers: checking distribution with and without outliers agains revenue
+##########################################################################################
 
-head(movies)
+##########################################################################################
+# Handle outliers
+##########################################################################################
 
+##########################################################################################
+# Misssing: for each variable checking distribution with and without outliers against all the other varaibles
+##########################################################################################
 
+##########################################################################################
+# Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
+##########################################################################################
+
+##########################################################################################
+# Misssing: Do imputation for each variable according to the appropriate technic
+##########################################################################################
 
