@@ -86,8 +86,52 @@ for (n in 2:5) {#nrow(protocol)){
 }
 
 ##########################################################################################
-# Correlation Graph (using Spearman)
+# Correlation Graph 
 ##########################################################################################
+
+
+# list all the numeric variables
+numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
+
+
+# list all the cat variables 
+categoricals<-str_trim(protocol$Feature.name[protocol$Value.type == "Categorical"])
+
+#remove movie_id
+categoricals<-categoricals[-grep('movie_id', categoricals)]
+
+
+categoricals<-categoricals[-grep('original_language', categoricals)]
+categoricals<-categoricals[-grep('runtime_cat', categoricals)]
+
+cmovies$original_language_num<-factor(cmovies$original_language)
+cmovies$original_language_num<-as.numeric(levels(cmovies$original_language_num))[cmovies$original_language_num]
+
+cmovies$runtime_cat<-factor(cmovies$runtime_cat)
+
+#install.packages("corrplot")
+library(corrplot)
+
+corr<-cor(cmovies[numerics], method = "pearson", use = "complete.obs")
+
+corrplot(corr, method="circle")
+
+
+corr<-cor(cmovies[categoricals], method = "spearman", use = "complete.obs")
+
+corrplot(corr, method="circle")
+
+
+
+both<-c(numerics, categoricals)
+
+corr<-cor(cmovies[both], method = "spearman", use = "complete.obs")
+
+corrplot(corr, method="circle")
+
+corr1<-corr[abs(corr) > 0.5]
+
+dim(corr1)
 
 ##########################################################################################
 # Missing Values heatmap
