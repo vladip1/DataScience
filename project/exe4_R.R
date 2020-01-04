@@ -8,6 +8,11 @@ library(dplyr)
 
 
 protocol<-read.xlsx("../project/BoxOffice - Data Retrieval Protocol.xlsx", sheet = "protocol")
+
+head(protocol)
+
+rownames(protocol) <- str_trim(protocol$Feature.name)
+
 load("../data/BoxOffice_ff.RData")
 
 ##########################################################################################
@@ -100,14 +105,15 @@ categoricals<-str_trim(protocol$Feature.name[protocol$Value.type == "Categorical
 #remove movie_id
 categoricals<-categoricals[-grep('movie_id', categoricals)]
 
-
+#remove original_languages
 categoricals<-categoricals[-grep('original_language', categoricals)]
+
+#remove runtime_cat
 categoricals<-categoricals[-grep('runtime_cat', categoricals)]
 
-cmovies$original_language_num<-factor(cmovies$original_language)
-cmovies$original_language_num<-as.numeric(levels(cmovies$original_language_num))[cmovies$original_language_num]
-
-cmovies$runtime_cat<-factor(cmovies$runtime_cat)
+#cmovies$original_language_num<-factor(cmovies$original_language)
+#cmovies$original_language_num<-as.numeric(levels(cmovies$original_language_num))[cmovies$original_language_num]
+#cmovies$runtime_cat<-factor(cmovies$runtime_cat)
 
 #install.packages("corrplot")
 library(corrplot)
@@ -129,29 +135,107 @@ corr<-cor(cmovies[both], method = "spearman", use = "complete.obs")
 
 corrplot(corr, method="circle")
 
-corr1<-corr[abs(corr) > 0.5]
 
-dim(corr1)
 
 ##########################################################################################
 # Missing Values heatmap
 ##########################################################################################
+missingMatrix <- function(data) {
+  vn <- names(data)
+  missdata <- data.frame(row1=1:nrow(data))
+  for(v in vn) {
+    mv <- ifelse(is.na(data[[v]]),1,0)
+    missdata[v] <- mv
+  }
+  missdata$row1 <- NULL
+  return(missdata)
+}
+
+miss<-missingMatrix(cmovies)
+
+options(repr.plot.width = 4, repr.plot.height = 4)
+library(naniar)
+vis_miss(cmovies[numerics])
+
+vis_miss(cmovies[categoricals])
 
 ##########################################################################################
 # Outliers: checking distribution with and without outliers
-##########################################################################################
-
-##########################################################################################
 # Outliers: checking distribution with and without outliers agains revenue
 ##########################################################################################
 
-##########################################################################################
-# Handle outliers
-##########################################################################################
+# list all the numeric variables
+numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
+
+outlierMatrix <- function(data,threshold=1.5) {
+  vn <- names(data)
+  outdata <- data.frame(row1=1:nrow(data))
+  for(v in vn) {
+    if(is.numeric(data[[v]])) {
+      med<- median(data[[v]], na.rm = T)
+      outlow <- quantile(data[[v]],probs = 0.25,na.rm = T) 
+      outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
+      irq_level <- (outhigh - outlow) * threshold
+      outlow <- outlow - irq_level
+      outhigh <- outhigh +  irq_level
+      mv <- ifelse(data[[v]] < outlow | data[[v]] > outhigh, 1, 0)
+      outdata[v] <- mv
+    } else {
+      mv <- rep(0,nrow(data))
+    }
+  }
+  outdata$row1 <- NULL
+  return(outdata)
+}
+
+out<-outlierMatrix(cmovies,threshold = 2.0)
+
+#cmovies with cleaned outliers
+ocmovies<-cmovies
+
+options(repr.plot.width = 8, repr.plot.height = 8)
+par(mfrow=c(2,2))
+for(v in numerics) {
+  #look on variable with some variability
+  if (protocol[v,"Unique.count"] > 35) {
+    print(v)
+  
+    ##############################
+    #Handle outliers
+    ##############################
+    
+    #drop outlier value (replace by NA)
+    ocmovies[which(out[v] == 1), v]<-NA
+
+    hist(cmovies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
+    lines(density(cmovies[[v]], na.rm = TRUE))
+    
+    hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
+    lines(density(ocmovies[[v]], na.rm = TRUE))
+    
+    plot(y = cmovies$revenue, x = cmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    abline(lm(cmovies$revenue ~ cmovies[[v]]))
+
+    plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
+    
+  }
+}
+par(mfrow=c(1,1))
 
 ##########################################################################################
-# Misssing: for each variable checking distribution with and without outliers against all the other varaibles
+# Misssing: for each variable checking distribution with and without missing against all the other varaibles
 ##########################################################################################
+
+miss<-missingMatrix(ocmovies)
+
+for(v in numerics) {
+  ggplot(ocmovies) +
+    geom_density(aes(log(ocmovies$revenue), group=miss[v], color=miss[v] + 1))
+}
+
+ggplot(ocmovies) +
+  geom_density(aes(log(ocmovies$revenue)))
 
 ##########################################################################################
 # Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
