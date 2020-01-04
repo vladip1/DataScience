@@ -18,52 +18,66 @@ load("../data/BoxOffice_ff.RData")
 ##########################################################################################
 # Function that print plot per variable type
 ##########################################################################################
-doEDA <- function(data, i) {
+doEDA <- function(data, column_name) {
   
-  column_name <- str_trim(protocol$Feature.name[i])
-  val.type <- str_trim(protocol$Value.type[i])
+  val.type <- str_trim(protocol[column_name, 'Value.type'])
+  data.type <- str_trim(protocol[column_name, 'Data.type'])
   
+  
+  cat(sprintf("column name: %s\n", column_name))
   cat(sprintf("Data.Type: %s\n", val.type))
   
-  summary(data[column_name])
+  summary(data[[column_name]])
   
-  summary(protocol$Value.type)
   
   if (!is.na(val.type) & val.type == "Numeric") {
     val.min <-   as.numeric(str_trim(protocol$Min[i]))
     val.max <- as.numeric(str_trim(protocol$Max[i]))
     
     
-    plot(data[column_name])
+
+    plot(data[[column_name]])
     
-    plot(movies$revenue ~ as.numeric(unlist(data[column_name])), xlab=column_name)
+    plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
     
-    #if differencce between the min and max is bigger than 1000 present log
-    if ((val.max - val.min) > 1000) {
-      hist(log(data[column_name]+1))
+    #if more than 35 unique numbers
+    if (protocol[column_name,"Unique.count"] > 35) {
+      #if differencce between the min and max is bigger than 1000 present log
+      if ((val.max - val.min) > 1000) {
+        hist(log(data[[column_name]]+1))
+      } else {
+        hist(data[[column_name]])
+      }
     } else {
-      hist(data[column_name])
+      barplot(table(data[[column_name]]))
     }
     
+    
     # if differencce between the min and max is bigger than 1000 present log
-    if ((val.max - val.min) > 1000) {
+    delta<-(val.max - val.min)
+    if (!is.na(delta) & delta > 1000) {
       boxplot(log(data[column_name]+1),main=column_name)
     } else {
       boxplot(data[column_name],main=column_name)
     }
     
-    scatter.smooth(data[column_name] ~ movies$movie_id, main=column_name, xlab="movies",ylab=column_name, family="symmetric",
+    scatter.smooth(as.numeric(unlist(data[[column_name]])) ~ as.numeric(unlist(data['movie_id'])), main=column_name, xlab="movies",ylab=column_name, family="symmetric",
+                   lpars =list(col = "red", lwd = 2, lty = 2))
+    
+    scatter.smooth(data[[column_name]] ~ data[['movie_id']], main=column_name, xlab="movies",ylab=column_name, family="symmetric",
                    lpars =list(col = "red", lwd = 2, lty = 2))
     
   } else if (!is.na(val.type) & val.type == "Categorical") {
-    barplot(prop.table(data[column_name]))
     
-    table(data[column_name])
-    
-    plot(movies$revenue ~ as.numeric(unlist(movies[column_name])), xlab=column_name)
+    if (!is.na(data.type) & data.type != "Text") {
+      table(data[[column_name]])
+      
+      barplot(table(data[[column_name]]))
+      #plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
+    }
     
     ggplot(data)+
-      geom_density(aes(log(revenue), group=data[column_name], color=data[column_name]))
+      geom_density(aes(log(data[['revenue']]), group=data[[column_name]], color=data[[column_name]]))
   }
 }
 
@@ -86,7 +100,21 @@ for (n in 2:nrow(protocol)){
 # print the summary and graphs per variable on cmovies 
 ##########################################################################################
 # Run in loop over the parameters and plot graph based on the variable type
-for (n in 2:5) {#nrow(protocol)){
+
+
+
+#remove depart_Lighting_female as it has all the values = 0
+cmovies<-cmovies[-grep('depart_Lighting_female', names(cmovies))]
+protocol<-protocol[-grep('depart_Lighting_female', rownames(protocol)), ]
+
+#remove movie_id from protocol
+cmovies<-cmovies[-grep('sw_collection', names(cmovies))]
+protocol<-protocol[-grep('sw_collection', rownames(protocol)), ]
+
+#remove movie_id from protocol
+protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
+
+for (n in rownames(protocol)){
   doEDA(cmovies, n)
 }
 
