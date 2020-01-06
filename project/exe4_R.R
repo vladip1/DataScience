@@ -31,25 +31,28 @@ doEDA <- function(data, column_name) {
   
   
   if (!is.na(val.type) & val.type == "Numeric") {
-    val.min <-   as.numeric(str_trim(protocol$Min[i]))
-    val.max <- as.numeric(str_trim(protocol$Max[i]))
+    val.min <-   as.numeric(str_trim(protocol[column_name, 'Min']))
+    val.max <- as.numeric(str_trim(protocol[column_name, 'Max']))
     
     
 
-    plot(data[[column_name]])
+    plot(data[[column_name]], ylab = column_name)
     
-    plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
+    plot(data[['revenue']] ~ data[[column_name]], xlab=column_name, ylab = "revenue")
     
     #if more than 35 unique numbers
     if (protocol[column_name,"Unique.count"] > 35) {
       #if differencce between the min and max is bigger than 1000 present log
       if ((val.max - val.min) > 1000) {
-        hist(log(data[[column_name]]+1))
+        hist(log(data[[column_name]]+1), main = paste("log of ", column_name), xlab = paste("log of ", column_name))
       } else {
-        hist(data[[column_name]])
+        hist(data[[column_name]], main = column_name, xlab = column_name)
       }
+      
+      scatter.smooth(data[[column_name]] ~ data[['movie_id']], main=column_name, xlab="movies",ylab=column_name, family="symmetric",
+                     lpars =list(col = "red", lwd = 2, lty = 2))
     } else {
-      barplot(table(data[[column_name]]))
+      barplot(table(data[[column_name]]), main = column_name)
     }
     
     
@@ -61,18 +64,12 @@ doEDA <- function(data, column_name) {
       boxplot(data[column_name],main=column_name)
     }
     
-    scatter.smooth(as.numeric(unlist(data[[column_name]])) ~ as.numeric(unlist(data['movie_id'])), main=column_name, xlab="movies",ylab=column_name, family="symmetric",
-                   lpars =list(col = "red", lwd = 2, lty = 2))
-    
-    scatter.smooth(data[[column_name]] ~ data[['movie_id']], main=column_name, xlab="movies",ylab=column_name, family="symmetric",
-                   lpars =list(col = "red", lwd = 2, lty = 2))
-    
   } else if (!is.na(val.type) & val.type == "Categorical") {
     
     if (!is.na(data.type) & data.type != "Text") {
       table(data[[column_name]])
       
-      barplot(table(data[[column_name]]))
+      barplot(table(data[[column_name]]), main = column_name)
       #plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
     }
     
@@ -104,12 +101,17 @@ for (n in 2:nrow(protocol)){
 
 
 #remove depart_Lighting_female as it has all the values = 0
-cmovies<-cmovies[-grep('depart_Lighting_female', names(cmovies))]
-protocol<-protocol[-grep('depart_Lighting_female', rownames(protocol)), ]
+#cmovies<-cmovies[-grep('depart_Lighting_female', names(cmovies))]
+#protocol<-protocol[-grep('depart_Lighting_female', rownames(protocol)), ]
+
+#remove depart_Visual_Effects_female as it has all the values = 0
+#cmovies<-cmovies[-grep('depart_Visual_Effects_female', names(cmovies))]
+#protocol<-protocol[-grep('depart_Visual_Effects_female', rownames(protocol)), ]
+
 
 #remove movie_id from protocol
-cmovies<-cmovies[-grep('sw_collection', names(cmovies))]
-protocol<-protocol[-grep('sw_collection', rownames(protocol)), ]
+#cmovies<-cmovies[-grep('sw_collection', names(cmovies))]
+#protocol<-protocol[-grep('sw_collection', rownames(protocol)), ]
 
 #remove movie_id from protocol
 protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
