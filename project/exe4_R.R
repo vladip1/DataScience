@@ -259,13 +259,36 @@ par(mfrow=c(1,1))
 
 miss<-missingMatrix(ocmovies)
 
-for(v in numerics) {
-  ggplot(ocmovies) +
-    geom_density(aes(log(ocmovies$revenue), group=miss[v], color=miss[v] + 1))
-}
+head(missmovies)
 
-ggplot(ocmovies) +
-  geom_density(aes(log(ocmovies$revenue)))
+for(v in numerics) {
+  for(j in numerics) {
+    val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
+    val.max <- as.numeric(str_trim(protocol[v, 'Max']))
+    
+    
+  
+    #if more than 35 unique numbers
+#    if (protocol[v,"Unique.count"] > 35) {
+      #if differencce between the min and max is bigger than 1000 present log
+      
+      if (v!=j)
+      {
+        if ((val.max - val.min) > 1000) {
+          ggplot(ocmovies) +
+            geom_density(aes(log(ocmovies[[v]]), group=miss[[j]], color=miss[[j]] + 1))
+        }
+        else
+        {
+          ggplot(ocmovies) +
+            geom_density(aes(ocmovies[[v]], group=miss[[j]], color=miss[[j]] + 1))
+          
+          
+        }
+      }
+#    }
+  }
+}
 
 ##########################################################################################
 # Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
