@@ -1,6 +1,9 @@
 setwd("C://Users//Cherch//DataScience//project")
 
 #install.packages("openxlsx")
+#install.packages("caret")
+
+require("caret")
 require("openxlsx")
 require("tidyverse")
 require(devtools)
@@ -19,6 +22,10 @@ load("../data/BoxOffice_ff.RData")
 # Function that print plot per variable type
 ##########################################################################################
 doEDA <- function(data, column_name) {
+  
+  options(repr.plot.width = 16, repr.plot.height = 16)
+  par(mfrow=c(2,2))
+  
   
   val.type <- str_trim(protocol[column_name, 'Value.type'])
   data.type <- str_trim(protocol[column_name, 'Data.type'])
@@ -76,6 +83,7 @@ doEDA <- function(data, column_name) {
     ggplot(data)+
       geom_density(aes(log(data[['revenue']]), group=data[[column_name]], color=data[[column_name]]))
   }
+  par(mfrow=c(1,1))
 }
 
 ##########################################################################################
@@ -118,6 +126,8 @@ protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
 
 for (n in rownames(protocol)){
   doEDA(cmovies, n)
+  
+  Sys.sleep(10)
 }
 
 ##########################################################################################
@@ -259,40 +269,126 @@ par(mfrow=c(1,1))
 
 miss<-missingMatrix(ocmovies)
 
-head(missmovies)
+
+lmiss <- lapply(miss, as.logical)
+
 
 for(v in numerics) {
   for(j in numerics) {
+    print(paste(v,j))
     val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
     val.max <- as.numeric(str_trim(protocol[v, 'Max']))
     
     
-  
-    #if more than 35 unique numbers
-#    if (protocol[v,"Unique.count"] > 35) {
-      #if differencce between the min and max is bigger than 1000 present log
-      
-      if (v!=j)
-      {
-        if ((val.max - val.min) > 1000) {
-          ggplot(ocmovies) +
-            geom_density(aes(log(ocmovies[[v]]), group=miss[[j]], color=miss[[j]] + 1))
-        }
-        else
-        {
-          ggplot(ocmovies) +
-            geom_density(aes(ocmovies[[v]], group=miss[[j]], color=miss[[j]] + 1))
-          
-          
-        }
+    if (v!=j)
+    {
+      if (val.max> 1000000) {
+        is_missing<-lmiss[[j]]
+        ggplot(ocmovies) +
+          geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
+          scale_x_continuous(name = paste("Log of", v)) +
+          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
       }
-#    }
+      else
+      {
+        is_missing<-lmiss[[j]]
+        ggplot(ocmovies) +
+          geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
+          scale_x_continuous(name = v) +
+          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+        
+      }
+    }
   }
 }
 
 ##########################################################################################
 # Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
 ##########################################################################################
+
+getMissingness <- function (data, getRows = FALSE) {
+  require(dplyr)
+  l <- nrow(data)
+  vn <- names(data)
+  nadf <- data
+  cnt <- NULL
+  miss <- function(x) return(sum(is.na(x)))
+  for (n in vn) {
+    nadf[[n]] <- ifelse(is.na(nadf[[n]]) == T, 1, 0)
+    cnt <- rbind(cnt, data.frame(n, sum(nadf[[n]])))
+  }
+  names(cnt) <- c("var", "na.count")
+  cnt$rate <- round((cnt$na.count/nrow(nadf)) * 100, 1)
+  nadf$na.cnt <- 0
+  nadf$na.cnt <- rowSums(nadf)
+  cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count > 
+                                                                    0)
+  totmiss <- nadf %>% dplyr::filter(na.cnt == 0) %>% dplyr::tally()
+  idx <- NULL
+  msg <- (paste("This dataset has ", as.character(totmiss), 
+                " (", as.character(round(totmiss/nrow(data) * 100, 1)), 
+                "%)", " complete rows. Original data has ", nrow(data), 
+                " rows.", sep = ""))
+  if (getRows == TRUE & totmiss != 0) {
+    nadf$rn <- seq_len(nrow(data))
+    idx <- nadf %>% dplyr::filter(na.cnt == 0) %>% dplyr::select(rn)
+  }
+  print(list(head(cnt, n = 10), msg))
+  return(list(missingness = cnt, message = msg, rows = idx$rn))
+}
+
+missingness<-getMissingness(ocmovies)
+msum<-missingness[[1]]
+
+corr<-cor(ocmovies[numerics], method = "pearson", use = "complete.obs")
+
+#corr<-cor(ocmovies[numerics], method = "pearson")
+
+summary(corr)
+corr.df<-as.data.frame(corr)
+
+dim(corr.df)
+
+corr.df[is.na(corr.df)] <- 0
+corr.df[corr.df == 1.0] <- 0
+library(dplyr)
+res<-corr.df %>% select_if(~any(. > 0.6))
+
+colnames(res)
+
+#remove one by one to till all the high-correlated columns are removed
+
+
+out<-vector()
+for (n in numerics) {
+  t<-corr.df[[n]]
+  
+  t[is.na(t)] <- 0
+  
+  
+  if (t > abs(0.1) & t < abs(1))
+  {
+    out<-cbind(out, n)
+  }
+  
+}
+
+require(MissMech)
+ocmovies1<-ocmovies[numerics]
+corr<-cor(ocmovies1, method = "pearson", use = "complete.obs")
+
+corrplot(corr, method="circle")
+
+#remove high correlated variables
+
+
+corr.df[corr.df$depart_Lighting > 0.1 & corr.df$depart_Lighting < 1]
+
+
+miss1 <- TestMCARNormality(data=ocmovies[c('depart_Custom_Mkup','director_movies_cnt', 'depart_Visual_Effects', 'budget')])
+
+mimiss1
+
 
 ##########################################################################################
 # Misssing: Do imputation for each variable according to the appropriate technic
