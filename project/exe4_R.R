@@ -1,8 +1,8 @@
 #home 
-#setwd("C://Users//Cherch//DataScience//project")
+setwd("C://Users//Cherch//DataScience//project")
 
 #work 
-setwd("C://bb//DataScience//project")
+#setwd("C://bb//DataScience//project")
 
 
 
@@ -155,12 +155,13 @@ corr<-cor(cmovies[categoricals], method = "spearman", use = "complete.obs")
 
 corrplot(corr, method="circle")
 
-
+###################################
 #remove highly correlated variables
+##################################
 numerics_wo_revenue<-numerics[-grep('revenue', numerics)]
 
 df2 <- cor(cmovies[numerics_wo_revenue],method = "pearson", use = "complete.obs")
-high_correlated_variable <- findCorrelation(df2, cutoff=0.6) # remove with correlation bigger than 0.6
+high_correlated_variable <- findCorrelation(df2, cutoff=0.6) # remove with correlation bigger than cutoff
 
 paste(numerics_wo_revenue[c(high_correlated_variable)], "was removed due to high correlation")
 
@@ -260,48 +261,8 @@ for(v in rnumerics) {
 }
 par(mfrow=c(1,1))
 
-
 ##########################################################################################
-# Misssing: for each variable checking distribution with and without missing against all the other varaibles
-##########################################################################################
-
-miss<-missingMatrix(ocmovies)
-
-
-lmiss <- lapply(miss, as.logical)
-
-
-for(v in numerics) {
-  for(j in numerics) {
-    print(paste(v,j))
-    val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
-    val.max <- as.numeric(str_trim(protocol[v, 'Max']))
-    
-    
-    if (v!=j)
-    {
-      if (val.max> 1000000) {
-        is_missing<-lmiss[[j]]
-        ggplot(ocmovies) +
-          geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
-          scale_x_continuous(name = paste("Log of", v)) +
-          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
-      }
-      else
-      {
-        is_missing<-lmiss[[j]]
-        ggplot(ocmovies) +
-          geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
-          scale_x_continuous(name = v) +
-          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
-        
-      }
-    }
-  }
-}
-
-##########################################################################################
-# Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
+#getMissingness <- function (data, getRows = FALSE) {
 ##########################################################################################
 
 getMissingness <- function (data, getRows = FALSE) {
@@ -335,57 +296,69 @@ getMissingness <- function (data, getRows = FALSE) {
   return(list(missingness = cnt, message = msg, rows = idx$rn))
 }
 
+##########################################################################################
+# Misssing: for each variable checking distribution with and without missing against all the other varaibles
+##########################################################################################
+
+
 missingness<-getMissingness(ocmovies)
-msum<-missingness[[1]]
-
-corr<-cor(ocmovies[numerics], method = "pearson", use = "complete.obs")
-
-#corr<-cor(ocmovies[numerics], method = "pearson")
-
-summary(corr)
-corr.df<-as.data.frame(corr)
-
-dim(corr.df)
-
-corr.df[is.na(corr.df)] <- 0
-corr.df[corr.df == 1.0] <- 0
-library(dplyr)
-res<-corr.df %>% select_if(~any(. > 0.6))
-
-colnames(res)
-
-#remove one by one to till all the high-correlated columns are removed
 
 
-out<-vector()
-for (n in numerics) {
-  t<-corr.df[[n]]
-  
-  t[is.na(t)] <- 0
-  
-  
-  if (t > abs(0.1) & t < abs(1))
-  {
-    out<-cbind(out, n)
+#remove variables with more than X of missings
+df<-missingness$missingness %>% filter(rate < 40.0)
+df<-df %>% filter(rate > 0)
+
+
+missing_variables<-as.character(df$var)
+
+miss<-missingMatrix(ocmovies[missing_variables])
+
+
+lmiss <- lapply(miss, as.logical)
+
+
+for(v in missing_variables) {
+  for(j in missing_variables) {
+    print(paste(v,j))
+    
+    if (protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" & 
+        protocol[v, "Data.type"] != "Boolean" & protocol[j, "Data.type"] != "Boolean")
+    {
+      val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
+      val.max <- as.numeric(str_trim(protocol[v, 'Max']))
+      
+      
+      if (v!=j)
+      {
+        if (val.max> 1000000) {
+          is_missing<-lmiss[[j]]
+          ggplot(ocmovies) +
+            geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
+            scale_x_continuous(name = paste("Log of", v)) +
+            ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+        }
+        else
+        {
+          is_missing<-lmiss[[j]]
+          ggplot(ocmovies) +
+            geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
+            scale_x_continuous(name = v) +
+            ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+          
+        }
+      }
+    }
   }
-  
 }
 
+##########################################################################################
+# Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
+##########################################################################################
+
+
 require(MissMech)
-ocmovies1<-ocmovies[numerics]
-corr<-cor(ocmovies1, method = "pearson", use = "complete.obs")
+miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[1:20]]))
 
-corrplot(corr, method="circle")
-
-#remove high correlated variables
-
-
-corr.df[corr.df$depart_Lighting > 0.1 & corr.df$depart_Lighting < 1]
-
-
-miss1 <- TestMCARNormality(data=ocmovies[c('depart_Custom_Mkup','director_movies_cnt', 'depart_Visual_Effects', 'budget')])
-
-mimiss1
 
 
 ##########################################################################################
