@@ -1,4 +1,10 @@
-setwd("C://Users//Cherch//DataScience//project")
+#home 
+#setwd("C://Users//Cherch//DataScience//project")
+
+#work 
+setwd("C://bb//DataScience//project")
+
+
 
 #install.packages("openxlsx")
 #install.packages("caret")
@@ -107,20 +113,6 @@ for (n in 2:nrow(protocol)){
 # Run in loop over the parameters and plot graph based on the variable type
 
 
-
-#remove depart_Lighting_female as it has all the values = 0
-#cmovies<-cmovies[-grep('depart_Lighting_female', names(cmovies))]
-#protocol<-protocol[-grep('depart_Lighting_female', rownames(protocol)), ]
-
-#remove depart_Visual_Effects_female as it has all the values = 0
-#cmovies<-cmovies[-grep('depart_Visual_Effects_female', names(cmovies))]
-#protocol<-protocol[-grep('depart_Visual_Effects_female', rownames(protocol)), ]
-
-
-#remove movie_id from protocol
-#cmovies<-cmovies[-grep('sw_collection', names(cmovies))]
-#protocol<-protocol[-grep('sw_collection', rownames(protocol)), ]
-
 #remove movie_id from protocol
 protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
 
@@ -151,10 +143,6 @@ categoricals<-categoricals[-grep('original_language', categoricals)]
 #remove runtime_cat
 categoricals<-categoricals[-grep('runtime_cat', categoricals)]
 
-#cmovies$original_language_num<-factor(cmovies$original_language)
-#cmovies$original_language_num<-as.numeric(levels(cmovies$original_language_num))[cmovies$original_language_num]
-#cmovies$runtime_cat<-factor(cmovies$runtime_cat)
-
 #install.packages("corrplot")
 library(corrplot)
 
@@ -168,13 +156,19 @@ corr<-cor(cmovies[categoricals], method = "spearman", use = "complete.obs")
 corrplot(corr, method="circle")
 
 
+#remove highly correlated variables
+numerics_wo_revenue<-numerics[-grep('revenue', numerics)]
 
-both<-c(numerics, categoricals)
+df2 <- cor(cmovies[numerics_wo_revenue],method = "pearson", use = "complete.obs")
+high_correlated_variable <- findCorrelation(df2, cutoff=0.6) # remove with correlation bigger than 0.6
 
-corr<-cor(cmovies[both], method = "spearman", use = "complete.obs")
+paste(numerics_wo_revenue[c(high_correlated_variable)], "was removed due to high correlation")
 
-corrplot(corr, method="circle")
+#reduced movies
+rcmovies<-cmovies[ , !(names(cmovies) %in% numerics_wo_revenue[high_correlated_variable])]
 
+#reduced numerics
+rnumerics<-numerics[! numerics %in% numerics_wo_revenue[c(high_correlated_variable)]]
 
 
 ##########################################################################################
@@ -191,21 +185,18 @@ missingMatrix <- function(data) {
   return(missdata)
 }
 
-miss<-missingMatrix(cmovies)
+miss<-missingMatrix(rcmovies)
 
 options(repr.plot.width = 4, repr.plot.height = 4)
 library(naniar)
-vis_miss(cmovies[numerics])
+vis_miss(rcmovies[rnumerics])
 
-vis_miss(cmovies[categoricals])
+vis_miss(rcmovies[categoricals])
 
 ##########################################################################################
 # Outliers: checking distribution with and without outliers
 # Outliers: checking distribution with and without outliers agains revenue
 ##########################################################################################
-
-# list all the numeric variables
-numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
 
 outlierMatrix <- function(data,threshold=1.5) {
   vn <- names(data)
@@ -228,14 +219,15 @@ outlierMatrix <- function(data,threshold=1.5) {
   return(outdata)
 }
 
-out<-outlierMatrix(cmovies,threshold = 2.0)
+out<-outlierMatrix(rcmovies,threshold = 2.0)
+
 
 #cmovies with cleaned outliers
-ocmovies<-cmovies
+ocmovies<-rcmovies
 
 options(repr.plot.width = 8, repr.plot.height = 8)
 par(mfrow=c(2,2))
-for(v in numerics) {
+for(v in rnumerics) {
   #look on variable with some variability
   if (protocol[v,"Unique.count"] > 35) {
     print(v)
@@ -247,21 +239,27 @@ for(v in numerics) {
     #drop outlier value (replace by NA)
     ocmovies[which(out[v] == 1), v]<-NA
 
-    hist(cmovies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
-    lines(density(cmovies[[v]], na.rm = TRUE))
+    hist(rcmovies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
+    lines(density(rcmovies[[v]], na.rm = TRUE))
     
     hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
     lines(density(ocmovies[[v]], na.rm = TRUE))
     
-    plot(y = cmovies$revenue, x = cmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
-    abline(lm(cmovies$revenue ~ cmovies[[v]]))
+    plot(y = cmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    abline(lm(cmovies$revenue ~ rcmovies[[v]]))
 
-    plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
     abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
+  
+    print(paste("T-Test of",v))
+    res<-t.test(ocmovies[[v]], rcmovies[[v]])
+
+    print(res)
     
   }
 }
 par(mfrow=c(1,1))
+
 
 ##########################################################################################
 # Misssing: for each variable checking distribution with and without missing against all the other varaibles
