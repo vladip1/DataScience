@@ -14,6 +14,8 @@ require("openxlsx")
 require("tidyverse")
 require(devtools)
 library(dplyr)
+library(car)
+
 
 
 protocol<-read.xlsx("../project/BoxOffice - Data Retrieval Protocol.xlsx", sheet = "protocol")
@@ -220,44 +222,86 @@ outlierMatrix <- function(data,threshold=1.5) {
   return(outdata)
 }
 
-out<-outlierMatrix(rcmovies,threshold = 2.0)
+out<-outlierMatrix(movies,threshold = 1.5)
 
 
-#cmovies with cleaned outliers
-ocmovies<-rcmovies
+ocmovies<-movies
 
-options(repr.plot.width = 8, repr.plot.height = 8)
-par(mfrow=c(2,2))
-for(v in rnumerics) {
+
+options(repr.plot.width = 16, repr.plot.height = 16)
+par(mfrow=c(1,3))
+for(v in numerics) {
   #look on variable with some variability
-  if (protocol[v,"Unique.count"] > 35) {
-    print(v)
-  
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, v, 
+         cex = 1.6, col = "black")
+    
+    hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
+    
+    #barplot(table(movies[[v]]))
+    
+    dev.new(width=5, height=4)
+    scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]], 
+                xlab="Revenue", ylab=v,
+                main=paste(v, "before outliers cleaup"))
+    abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
+    
+      
+      
+    
     ##############################
     #Handle outliers
     ##############################
-    
-    #drop outlier value (replace by NA)
-    ocmovies[which(out[v] == 1), v]<-NA
 
-    hist(rcmovies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
-    lines(density(rcmovies[[v]], na.rm = TRUE))
     
-    hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
-    lines(density(ocmovies[[v]], na.rm = TRUE))
+    if (protocol[v,"Outlier.treatment"] == "Leave"){
+      
+      print("Do nothing")
+      
+    } else if (protocol[v,"Outlier.treatment"] == "Null"){
+      
+      #drop outlier value (replace by NA)
+      ocmovies[which(out[v] == 1), v]<-NA
+      
+    } else if (protocol[v,"Outlier.treatment"] == "Log"){
+      
+      ocmovies[[v]]<-log(ocmovies[[v]])
+      
+    } else if (protocol[v,"Outlier.treatment"] == "Mean"){
+      
+      ocmovies[which(out[v] == 1), v]<-mean(ocmovies[[v]])
+      
+    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
+      
+      ocmovies[[v]]<-sqrt(ocmovies[[v]])
+      
+    } else if (protocol[v,"Outlier.treatment"] == "DropVar"){
+      
+      ocmovies[,! names(ocmovies) == v]
+    }
     
-    plot(y = cmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
-    abline(lm(cmovies$revenue ~ rcmovies[[v]]))
+    
+    print(protocol[v,"Notes"])
+    
+    
+    
+    
+    
+    #hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
+    #lines(density(ocmovies[[v]], na.rm = TRUE))
+    
+    #plot(y = rcmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    #abline(lm(rcmovies$revenue ~ rcmovies[[v]]))
 
-    plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
+    #plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
+    #abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
   
-    print(paste("T-Test of",v))
-    res<-t.test(ocmovies[[v]], rcmovies[[v]])
+    #print(paste("T-Test of",v))
+    #res<-t.test(ocmovies[[v]], rcmovies[[v]])
 
-    print(res)
+    #print(res)
     
-  }
 }
 par(mfrow=c(1,1))
 
@@ -303,9 +347,11 @@ getMissingness <- function (data, getRows = FALSE) {
 
 missingness<-getMissingness(ocmovies)
 
+df<-missingness$missingness %>% filter(rate >= 37.0)
+high_missing_variables<-as.character(df$var)
 
 #remove variables with more than X of missings
-df<-missingness$missingness %>% filter(rate < 40.0)
+df<-missingness$missingness %>% filter(rate < 37.0)
 df<-df %>% filter(rate > 0)
 
 
@@ -332,18 +378,20 @@ for(v in missing_variables) {
       {
         if (val.max> 1000000) {
           is_missing<-lmiss[[j]]
-          ggplot(ocmovies) +
+          p<-ggplot(ocmovies) +
             geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = paste("Log of", v)) +
             ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+          print(p)
         }
         else
         {
           is_missing<-lmiss[[j]]
-          ggplot(ocmovies) +
+          p<-ggplot(ocmovies) +
             geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = v) +
             ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+          print(p)
           
         }
       }
@@ -357,7 +405,25 @@ for(v in missing_variables) {
 
 
 require(MissMech)
-miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[1:20]]))
+
+miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[10:34]]), del.lesscases = 10)
+
+
+#TestMCARNormality(data=as.matrix(movies[numerics_wo_revenue]), del.lesscases = 1)
+
+
+dd<-protocol[missing_variables,] %>% filter(Value.type == 'Numeric') 
+
+ff<-str_trim(dd$Feature.name)
+
+TestMCARNormality(data=as.matrix(movies[ff[1:15]]), del.lesscases = 1)
+
+nummovies<-movies[, (names(movies) %in% numerics)]
+
+TestMCARNormality(data=as.matrix(nummovies[, !(names(nummovies) %in% high_missing_variables)]), del.lesscases = 1)
+
+
+
 
 
 
@@ -365,3 +431,29 @@ miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[1:20]]))
 # Misssing: Do imputation for each variable according to the appropriate technic
 ##########################################################################################
 
+library(mice)
+init = mice(movies[missing_variables], maxit=0) 
+meth = init$method
+predM = init$predictorMatrix
+
+predM
+set.seed(103)
+imputed = mice(movies[missing_variables], method=meth, predictorMatrix=predM, m=5)
+
+
+n <- 300
+p <- 5
+r <- 0.3
+mu <- rep(0, p)
+sigma <- r * (matrix(1, p, p) - diag(1, p))+ diag(1, p)
+set.seed(110)
+eig <- eigen(sigma)
+sig.sqrt <- eig$vectors %*%  diag(sqrt(eig$values)) %*%  solve(eig$vectors)
+sig.sqrt <- (sig.sqrt + sig.sqrt) / 2
+y <- matrix(rnorm(n * p), nrow = n) %*%  sig.sqrt
+tmp <- y
+for (j in 2:p){
+  y[tmp[, j - 1] > 0.8, j] <- NA 
+}
+out <- TestMCARNormality(data = y, alpha =0.1)
+print(out)
