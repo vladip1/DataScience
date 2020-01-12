@@ -1,7 +1,7 @@
-#home 
+#home
 setwd("C://Users//Cherch//DataScience//project")
 
-#work 
+#work
 #setwd("C://bb//DataScience//project")
 
 
@@ -30,31 +30,31 @@ load("../data/BoxOffice_ff.RData")
 # Function that print plot per variable type
 ##########################################################################################
 doEDA <- function(data, column_name) {
-  
+
   options(repr.plot.width = 16, repr.plot.height = 16)
   par(mfrow=c(2,2))
-  
-  
+
+
   val.type <- str_trim(protocol[column_name, 'Value.type'])
   data.type <- str_trim(protocol[column_name, 'Data.type'])
-  
-  
+
+
   cat(sprintf("column name: %s\n", column_name))
   cat(sprintf("Data.Type: %s\n", val.type))
-  
+
   summary(data[[column_name]])
-  
-  
+
+
   if (!is.na(val.type) & val.type == "Numeric") {
     val.min <-   as.numeric(str_trim(protocol[column_name, 'Min']))
     val.max <- as.numeric(str_trim(protocol[column_name, 'Max']))
-    
-    
+
+
 
     plot(data[[column_name]], ylab = column_name)
-    
+
     plot(data[['revenue']] ~ data[[column_name]], xlab=column_name, ylab = "revenue")
-    
+
     #if more than 35 unique numbers
     if (protocol[column_name,"Unique.count"] > 35) {
       #if differencce between the min and max is bigger than 1000 present log
@@ -63,14 +63,14 @@ doEDA <- function(data, column_name) {
       } else {
         hist(data[[column_name]], main = column_name, xlab = column_name)
       }
-      
+
       scatter.smooth(data[[column_name]] ~ data[['movie_id']], main=column_name, xlab="movies",ylab=column_name, family="symmetric",
                      lpars =list(col = "red", lwd = 2, lty = 2))
     } else {
       barplot(table(data[[column_name]]), main = column_name)
     }
-    
-    
+
+
     # if differencce between the min and max is bigger than 1000 present log
     delta<-(val.max - val.min)
     if (!is.na(delta) & delta > 1000) {
@@ -78,16 +78,16 @@ doEDA <- function(data, column_name) {
     } else {
       boxplot(data[column_name],main=column_name)
     }
-    
+
   } else if (!is.na(val.type) & val.type == "Categorical") {
-    
+
     if (!is.na(data.type) & data.type != "Text") {
       table(data[[column_name]])
-      
+
       barplot(table(data[[column_name]]), main = column_name)
       #plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
     }
-    
+
     ggplot(data)+
       geom_density(aes(log(data[['revenue']]), group=data[[column_name]], color=data[[column_name]]))
   }
@@ -102,7 +102,7 @@ for (n in 2:nrow(protocol)){
   val<-str_trim(protocol$Null[n])
 
   feature<-str_trim(protocol$Feature.name[n])
-  
+
   # set the NULL value to be Na
   if (!is.na(val) & (val == "0" || val == "1")) {
     cmovies[feature]<- na_if(cmovies[feature], as.numeric(val))
@@ -110,7 +110,7 @@ for (n in 2:nrow(protocol)){
 }
 
 ##########################################################################################
-# print the summary and graphs per variable on cmovies 
+# print the summary and graphs per variable on cmovies
 ##########################################################################################
 # Run in loop over the parameters and plot graph based on the variable type
 
@@ -120,12 +120,12 @@ protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
 
 for (n in rownames(protocol)){
   doEDA(cmovies, n)
-  
+
   Sys.sleep(10)
 }
 
 ##########################################################################################
-# Correlation Graph 
+# Correlation Graph
 ##########################################################################################
 
 
@@ -133,7 +133,7 @@ for (n in rownames(protocol)){
 numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
 
 
-# list all the cat variables 
+# list all the cat variables
 categoricals<-str_trim(protocol$Feature.name[protocol$Value.type == "Categorical"])
 
 #remove movie_id
@@ -207,7 +207,7 @@ outlierMatrix <- function(data,threshold=1.5) {
   for(v in vn) {
     if(is.numeric(data[[v]])) {
       med<- median(data[[v]], na.rm = T)
-      outlow <- quantile(data[[v]],probs = 0.25,na.rm = T) 
+      outlow <- quantile(data[[v]],probs = 0.25,na.rm = T)
       outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
       irq_level <- (outhigh - outlow) * threshold
       outlow <- outlow - irq_level
@@ -222,86 +222,180 @@ outlierMatrix <- function(data,threshold=1.5) {
   return(outdata)
 }
 
-out<-outlierMatrix(movies,threshold = 1.5)
+outlierMatrixWinsorizing <- function(data, v, threshold=1.5) {
+  if(is.numeric(data[[v]])) {
+    med<- median(data[[v]], na.rm = T)
+    outlow <- quantile(data[[v]],probs = 0.25,na.rm = T)
+    outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
+    irq_level <- (outhigh - outlow) * threshold
+    outlow <- outlow - irq_level
+    outhigh <- outhigh +  irq_level
+
+    data[data[[v]] < outlow, v]<-outlow
+
+    data[data[[v]] > outhigh, v]<-outhigh
+
+  } else {
+    mv <- rep(0,nrow(data))
+  }
+
+  return(data)
+}
+
+
+movies_threshold<-1.5
+
+out<-outlierMatrix(movies,threshold = movies_threshold)
 
 
 ocmovies<-movies
 
-
 options(repr.plot.width = 16, repr.plot.height = 16)
-par(mfrow=c(1,3))
+par(mfrow=c(1,1))
 for(v in numerics) {
   #look on variable with some variability
-    
+
+
+
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-    text(x = 0.5, y = 0.5, v, 
+    text(x = 0.5, y = 0.5, v,
          cex = 1.6, col = "black")
-    
+
     hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
-    
-    #barplot(table(movies[[v]]))
-    
-    dev.new(width=5, height=4)
-    scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]], 
+
+    barplot(table(movies[[v]]))
+
+    #dev.new(width=5, height=4)
+    scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
                 xlab="Revenue", ylab=v,
                 main=paste(v, "before outliers cleaup"))
     abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
-    
-      
-      
-    
+
+
+
+
     ##############################
     #Handle outliers
     ##############################
 
-    
-    if (protocol[v,"Outlier.treatment"] == "Leave"){
-      
-      print("Do nothing")
-      
-    } else if (protocol[v,"Outlier.treatment"] == "Null"){
-      
+
+#    if (protocol[v,"Outlier.treatment"] == "Leave"){
+
+#      print("Do nothing")
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Null"){
+
       #drop outlier value (replace by NA)
       ocmovies[which(out[v] == 1), v]<-NA
-      
-    } else if (protocol[v,"Outlier.treatment"] == "Log"){
-      
-      ocmovies[[v]]<-log(ocmovies[[v]])
-      
-    } else if (protocol[v,"Outlier.treatment"] == "Mean"){
-      
-      ocmovies[which(out[v] == 1), v]<-mean(ocmovies[[v]])
-      
-    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
-      
-      ocmovies[[v]]<-sqrt(ocmovies[[v]])
-      
-    } else if (protocol[v,"Outlier.treatment"] == "DropVar"){
-      
-      ocmovies[,! names(ocmovies) == v]
+
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("NA method on ", v),
+         cex = 1.6, col = "black")
+
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+    barplot(table(ocmovies[[v]]))
+
+    #dev.new(width=5, height=4)
+    scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                xlab="Revenue", ylab=v,
+                main=paste(v, "after outliers cleaup"))
+
+    dtt<-dim(table(ocmovies[[v]]))
+    if (length(dtt) != 1) {
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
     }
-    
-    
-    print(protocol[v,"Notes"])
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Log"){
+
+      ocmovies[[v]]<-log(movies[[v]] + 1)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("Log method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      #dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
+
+      ocmovies[[v]]<-sqrt(movies[[v]] + 1)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("Sqrt method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
+
+      ocmovies<-outlierMatrixWinsorizing(movies, v, movies_threshold)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("TRIM method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "DropVar"){
+
+#      ocmovies[,! names(ocmovies) == v]
+#    }
+
+
+
+
+#     print(protocol[v,"Notes"])
+
+
+
+
+
     #hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
     #lines(density(ocmovies[[v]], na.rm = TRUE))
-    
+
     #plot(y = rcmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
     #abline(lm(rcmovies$revenue ~ rcmovies[[v]]))
 
     #plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
     #abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
-  
+
     #print(paste("T-Test of",v))
     #res<-t.test(ocmovies[[v]], rcmovies[[v]])
 
     #print(res)
-    
+
 }
 par(mfrow=c(1,1))
 
@@ -324,13 +418,13 @@ getMissingness <- function (data, getRows = FALSE) {
   cnt$rate <- round((cnt$na.count/nrow(nadf)) * 100, 1)
   nadf$na.cnt <- 0
   nadf$na.cnt <- rowSums(nadf)
-  cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count > 
+  cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count >
                                                                     0)
   totmiss <- nadf %>% dplyr::filter(na.cnt == 0) %>% dplyr::tally()
   idx <- NULL
-  msg <- (paste("This dataset has ", as.character(totmiss), 
-                " (", as.character(round(totmiss/nrow(data) * 100, 1)), 
-                "%)", " complete rows. Original data has ", nrow(data), 
+  msg <- (paste("This dataset has ", as.character(totmiss),
+                " (", as.character(round(totmiss/nrow(data) * 100, 1)),
+                "%)", " complete rows. Original data has ", nrow(data),
                 " rows.", sep = ""))
   if (getRows == TRUE & totmiss != 0) {
     nadf$rn <- seq_len(nrow(data))
@@ -366,14 +460,14 @@ lmiss <- lapply(miss, as.logical)
 for(v in missing_variables) {
   for(j in missing_variables) {
     print(paste(v,j))
-    
-    if (protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" & 
+
+    if (protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" &
         protocol[v, "Data.type"] != "Boolean" & protocol[j, "Data.type"] != "Boolean")
     {
       val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
       val.max <- as.numeric(str_trim(protocol[v, 'Max']))
-      
-      
+
+
       if (v!=j)
       {
         if (val.max> 1000000) {
@@ -381,7 +475,7 @@ for(v in missing_variables) {
           p<-ggplot(ocmovies) +
             geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = paste("Log of", v)) +
-            ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+            ggtitle(paste("Density plot of", v, "with and without missing", j))
           print(p)
         }
         else
@@ -390,9 +484,9 @@ for(v in missing_variables) {
           p<-ggplot(ocmovies) +
             geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = v) +
-            ggtitle(paste("Density plot of", v, "with and without missing", j)) 
+            ggtitle(paste("Density plot of", v, "with and without missing", j))
           print(p)
-          
+
         }
       }
     }
@@ -412,7 +506,7 @@ miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[10:34]]), d
 #TestMCARNormality(data=as.matrix(movies[numerics_wo_revenue]), del.lesscases = 1)
 
 
-dd<-protocol[missing_variables,] %>% filter(Value.type == 'Numeric') 
+dd<-protocol[missing_variables,] %>% filter(Value.type == 'Numeric')
 
 ff<-str_trim(dd$Feature.name)
 
@@ -432,7 +526,7 @@ TestMCARNormality(data=as.matrix(nummovies[, !(names(nummovies) %in% high_missin
 ##########################################################################################
 
 library(mice)
-init = mice(movies[missing_variables], maxit=0) 
+init = mice(movies[missing_variables], maxit=0)
 meth = init$method
 predM = init$predictorMatrix
 
@@ -453,7 +547,7 @@ sig.sqrt <- (sig.sqrt + sig.sqrt) / 2
 y <- matrix(rnorm(n * p), nrow = n) %*%  sig.sqrt
 tmp <- y
 for (j in 2:p){
-  y[tmp[, j - 1] > 0.8, j] <- NA 
+  y[tmp[, j - 1] > 0.8, j] <- NA
 }
 out <- TestMCARNormality(data = y, alpha =0.1)
 print(out)
