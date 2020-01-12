@@ -1,4 +1,10 @@
+#home
 setwd("C://Users//Cherch//DataScience//project")
+
+#work
+#setwd("C://bb//DataScience//project")
+
+
 
 #install.packages("openxlsx")
 #install.packages("caret")
@@ -8,6 +14,8 @@ require("openxlsx")
 require("tidyverse")
 require(devtools)
 library(dplyr)
+library(car)
+
 
 
 protocol<-read.xlsx("../project/BoxOffice - Data Retrieval Protocol.xlsx", sheet = "protocol")
@@ -22,31 +30,31 @@ load("../data/BoxOffice_ff.RData")
 # Function that print plot per variable type
 ##########################################################################################
 doEDA <- function(data, column_name) {
-  
+
   options(repr.plot.width = 16, repr.plot.height = 16)
   par(mfrow=c(2,2))
-  
-  
+
+
   val.type <- str_trim(protocol[column_name, 'Value.type'])
   data.type <- str_trim(protocol[column_name, 'Data.type'])
-  
-  
+
+
   cat(sprintf("column name: %s\n", column_name))
   cat(sprintf("Data.Type: %s\n", val.type))
-  
+
   summary(data[[column_name]])
-  
-  
+
+
   if (!is.na(val.type) & val.type == "Numeric") {
     val.min <-   as.numeric(str_trim(protocol[column_name, 'Min']))
     val.max <- as.numeric(str_trim(protocol[column_name, 'Max']))
-    
-    
+
+
 
     plot(data[[column_name]], ylab = column_name)
-    
+
     plot(data[['revenue']] ~ data[[column_name]], xlab=column_name, ylab = "revenue")
-    
+
     #if more than 35 unique numbers
     if (protocol[column_name,"Unique.count"] > 35) {
       #if differencce between the min and max is bigger than 1000 present log
@@ -55,14 +63,14 @@ doEDA <- function(data, column_name) {
       } else {
         hist(data[[column_name]], main = column_name, xlab = column_name)
       }
-      
+
       scatter.smooth(data[[column_name]] ~ data[['movie_id']], main=column_name, xlab="movies",ylab=column_name, family="symmetric",
                      lpars =list(col = "red", lwd = 2, lty = 2))
     } else {
       barplot(table(data[[column_name]]), main = column_name)
     }
-    
-    
+
+
     # if differencce between the min and max is bigger than 1000 present log
     delta<-(val.max - val.min)
     if (!is.na(delta) & delta > 1000) {
@@ -70,16 +78,16 @@ doEDA <- function(data, column_name) {
     } else {
       boxplot(data[column_name],main=column_name)
     }
-    
+
   } else if (!is.na(val.type) & val.type == "Categorical") {
-    
+
     if (!is.na(data.type) & data.type != "Text") {
       table(data[[column_name]])
-      
+
       barplot(table(data[[column_name]]), main = column_name)
       #plot(data[['revenue']] ~ data[[column_name]], xlab=column_name)
     }
-    
+
     ggplot(data)+
       geom_density(aes(log(data[['revenue']]), group=data[[column_name]], color=data[[column_name]]))
   }
@@ -94,7 +102,7 @@ for (n in 2:nrow(protocol)){
   val<-str_trim(protocol$Null[n])
 
   feature<-str_trim(protocol$Feature.name[n])
-  
+
   # set the NULL value to be Na
   if (!is.na(val) & (val == "0" || val == "1")) {
     cmovies[feature]<- na_if(cmovies[feature], as.numeric(val))
@@ -102,36 +110,22 @@ for (n in 2:nrow(protocol)){
 }
 
 ##########################################################################################
-# print the summary and graphs per variable on cmovies 
+# print the summary and graphs per variable on cmovies
 ##########################################################################################
 # Run in loop over the parameters and plot graph based on the variable type
 
-
-
-#remove depart_Lighting_female as it has all the values = 0
-#cmovies<-cmovies[-grep('depart_Lighting_female', names(cmovies))]
-#protocol<-protocol[-grep('depart_Lighting_female', rownames(protocol)), ]
-
-#remove depart_Visual_Effects_female as it has all the values = 0
-#cmovies<-cmovies[-grep('depart_Visual_Effects_female', names(cmovies))]
-#protocol<-protocol[-grep('depart_Visual_Effects_female', rownames(protocol)), ]
-
-
-#remove movie_id from protocol
-#cmovies<-cmovies[-grep('sw_collection', names(cmovies))]
-#protocol<-protocol[-grep('sw_collection', rownames(protocol)), ]
 
 #remove movie_id from protocol
 protocol<-protocol[-grep('movie_id', rownames(protocol)), ]
 
 for (n in rownames(protocol)){
   doEDA(cmovies, n)
-  
+
   Sys.sleep(10)
 }
 
 ##########################################################################################
-# Correlation Graph 
+# Correlation Graph
 ##########################################################################################
 
 
@@ -139,7 +133,7 @@ for (n in rownames(protocol)){
 numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
 
 
-# list all the cat variables 
+# list all the cat variables
 categoricals<-str_trim(protocol$Feature.name[protocol$Value.type == "Categorical"])
 
 #remove movie_id
@@ -150,10 +144,6 @@ categoricals<-categoricals[-grep('original_language', categoricals)]
 
 #remove runtime_cat
 categoricals<-categoricals[-grep('runtime_cat', categoricals)]
-
-#cmovies$original_language_num<-factor(cmovies$original_language)
-#cmovies$original_language_num<-as.numeric(levels(cmovies$original_language_num))[cmovies$original_language_num]
-#cmovies$runtime_cat<-factor(cmovies$runtime_cat)
 
 #install.packages("corrplot")
 library(corrplot)
@@ -167,14 +157,21 @@ corr<-cor(cmovies[categoricals], method = "spearman", use = "complete.obs")
 
 corrplot(corr, method="circle")
 
+###################################
+#remove highly correlated variables
+##################################
+numerics_wo_revenue<-numerics[-grep('revenue', numerics)]
 
+df2 <- cor(cmovies[numerics_wo_revenue],method = "pearson", use = "complete.obs")
+high_correlated_variable <- findCorrelation(df2, cutoff=0.6) # remove with correlation bigger than cutoff
 
-both<-c(numerics, categoricals)
+paste(numerics_wo_revenue[c(high_correlated_variable)], "was removed due to high correlation")
 
-corr<-cor(cmovies[both], method = "spearman", use = "complete.obs")
+#reduced movies
+rcmovies<-cmovies[ , !(names(cmovies) %in% numerics_wo_revenue[high_correlated_variable])]
 
-corrplot(corr, method="circle")
-
+#reduced numerics
+rnumerics<-numerics[! numerics %in% numerics_wo_revenue[c(high_correlated_variable)]]
 
 
 ##########################################################################################
@@ -191,21 +188,18 @@ missingMatrix <- function(data) {
   return(missdata)
 }
 
-miss<-missingMatrix(cmovies)
+miss<-missingMatrix(rcmovies)
 
 options(repr.plot.width = 4, repr.plot.height = 4)
 library(naniar)
-vis_miss(cmovies[numerics])
+vis_miss(rcmovies[rnumerics])
 
-vis_miss(cmovies[categoricals])
+vis_miss(rcmovies[categoricals])
 
 ##########################################################################################
 # Outliers: checking distribution with and without outliers
 # Outliers: checking distribution with and without outliers agains revenue
 ##########################################################################################
-
-# list all the numeric variables
-numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
 
 outlierMatrix <- function(data,threshold=1.5) {
   vn <- names(data)
@@ -213,7 +207,7 @@ outlierMatrix <- function(data,threshold=1.5) {
   for(v in vn) {
     if(is.numeric(data[[v]])) {
       med<- median(data[[v]], na.rm = T)
-      outlow <- quantile(data[[v]],probs = 0.25,na.rm = T) 
+      outlow <- quantile(data[[v]],probs = 0.25,na.rm = T)
       outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
       irq_level <- (outhigh - outlow) * threshold
       outlow <- outlow - irq_level
@@ -228,82 +222,185 @@ outlierMatrix <- function(data,threshold=1.5) {
   return(outdata)
 }
 
-out<-outlierMatrix(cmovies,threshold = 2.0)
+outlierMatrixWinsorizing <- function(data, v, threshold=1.5) {
+  if(is.numeric(data[[v]])) {
+    med<- median(data[[v]], na.rm = T)
+    outlow <- quantile(data[[v]],probs = 0.25,na.rm = T)
+    outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
+    irq_level <- (outhigh - outlow) * threshold
+    outlow <- outlow - irq_level
+    outhigh <- outhigh +  irq_level
 
-#cmovies with cleaned outliers
-ocmovies<-cmovies
+    data[data[[v]] < outlow, v]<-outlow
 
-options(repr.plot.width = 8, repr.plot.height = 8)
-par(mfrow=c(2,2))
+    data[data[[v]] > outhigh, v]<-outhigh
+
+  } else {
+    mv <- rep(0,nrow(data))
+  }
+
+  return(data)
+}
+
+
+movies_threshold<-1.5
+
+out<-outlierMatrix(movies,threshold = movies_threshold)
+
+
+ocmovies<-movies
+
+options(repr.plot.width = 16, repr.plot.height = 16)
+par(mfrow=c(1,1))
 for(v in numerics) {
   #look on variable with some variability
-  if (protocol[v,"Unique.count"] > 35) {
-    print(v)
-  
+
+
+
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, v,
+         cex = 1.6, col = "black")
+
+    hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
+
+    barplot(table(movies[[v]]))
+
+    #dev.new(width=5, height=4)
+    scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
+                xlab="Revenue", ylab=v,
+                main=paste(v, "before outliers cleaup"))
+    abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
+
+
+
+
     ##############################
     #Handle outliers
     ##############################
-    
-    #drop outlier value (replace by NA)
-    ocmovies[which(out[v] == 1), v]<-NA
 
-    hist(cmovies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
-    lines(density(cmovies[[v]], na.rm = TRUE))
-    
-    hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
-    lines(density(ocmovies[[v]], na.rm = TRUE))
-    
-    plot(y = cmovies$revenue, x = cmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
-    abline(lm(cmovies$revenue ~ cmovies[[v]]))
 
-    plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
-    
-  }
+#    if (protocol[v,"Outlier.treatment"] == "Leave"){
+
+#      print("Do nothing")
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Null"){
+
+      #drop outlier value (replace by NA)
+      ocmovies[which(out[v] == 1), v]<-NA
+
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("NA method on ", v),
+         cex = 1.6, col = "black")
+
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+    barplot(table(ocmovies[[v]]))
+
+    #dev.new(width=5, height=4)
+    scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                xlab="Revenue", ylab=v,
+                main=paste(v, "after outliers cleaup"))
+
+    dtt<-dim(table(ocmovies[[v]]))
+    if (length(dtt) != 1) {
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    }
+
+
+
+
+
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Log"){
+
+      ocmovies[[v]]<-log(movies[[v]] + 1)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("Log method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      #dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
+
+      ocmovies[[v]]<-sqrt(movies[[v]] + 1)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("Sqrt method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
+
+      ocmovies<-outlierMatrixWinsorizing(movies, v, movies_threshold)
+
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("TRIM method on ", v),
+           cex = 1.6, col = "black")
+
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+
+      barplot(table(ocmovies[[v]]))
+
+      dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
+      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+
+
+#    } else if (protocol[v,"Outlier.treatment"] == "DropVar"){
+
+#      ocmovies[,! names(ocmovies) == v]
+#    }
+
+
+
+
+#     print(protocol[v,"Notes"])
+
+
+
+
+
+    #hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
+    #lines(density(ocmovies[[v]], na.rm = TRUE))
+
+    #plot(y = rcmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
+    #abline(lm(rcmovies$revenue ~ rcmovies[[v]]))
+
+    #plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
+    #abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
+
+    #print(paste("T-Test of",v))
+    #res<-t.test(ocmovies[[v]], rcmovies[[v]])
+
+    #print(res)
+
 }
 par(mfrow=c(1,1))
 
 ##########################################################################################
-# Misssing: for each variable checking distribution with and without missing against all the other varaibles
-##########################################################################################
-
-miss<-missingMatrix(ocmovies)
-
-
-lmiss <- lapply(miss, as.logical)
-
-
-for(v in numerics) {
-  for(j in numerics) {
-    print(paste(v,j))
-    val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
-    val.max <- as.numeric(str_trim(protocol[v, 'Max']))
-    
-    
-    if (v!=j)
-    {
-      if (val.max> 1000000) {
-        is_missing<-lmiss[[j]]
-        ggplot(ocmovies) +
-          geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
-          scale_x_continuous(name = paste("Log of", v)) +
-          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
-      }
-      else
-      {
-        is_missing<-lmiss[[j]]
-        ggplot(ocmovies) +
-          geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
-          scale_x_continuous(name = v) +
-          ggtitle(paste("Density plot of", v, "with and without missing", j)) 
-        
-      }
-    }
-  }
-}
-
-##########################################################################################
-# Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
+#getMissingness <- function (data, getRows = FALSE) {
 ##########################################################################################
 
 getMissingness <- function (data, getRows = FALSE) {
@@ -321,13 +418,13 @@ getMissingness <- function (data, getRows = FALSE) {
   cnt$rate <- round((cnt$na.count/nrow(nadf)) * 100, 1)
   nadf$na.cnt <- 0
   nadf$na.cnt <- rowSums(nadf)
-  cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count > 
+  cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count >
                                                                     0)
   totmiss <- nadf %>% dplyr::filter(na.cnt == 0) %>% dplyr::tally()
   idx <- NULL
-  msg <- (paste("This dataset has ", as.character(totmiss), 
-                " (", as.character(round(totmiss/nrow(data) * 100, 1)), 
-                "%)", " complete rows. Original data has ", nrow(data), 
+  msg <- (paste("This dataset has ", as.character(totmiss),
+                " (", as.character(round(totmiss/nrow(data) * 100, 1)),
+                "%)", " complete rows. Original data has ", nrow(data),
                 " rows.", sep = ""))
   if (getRows == TRUE & totmiss != 0) {
     nadf$rn <- seq_len(nrow(data))
@@ -337,60 +434,120 @@ getMissingness <- function (data, getRows = FALSE) {
   return(list(missingness = cnt, message = msg, rows = idx$rn))
 }
 
+##########################################################################################
+# Misssing: for each variable checking distribution with and without missing against all the other varaibles
+##########################################################################################
+
+
 missingness<-getMissingness(ocmovies)
-msum<-missingness[[1]]
 
-corr<-cor(ocmovies[numerics], method = "pearson", use = "complete.obs")
+df<-missingness$missingness %>% filter(rate >= 37.0)
+high_missing_variables<-as.character(df$var)
 
-#corr<-cor(ocmovies[numerics], method = "pearson")
-
-summary(corr)
-corr.df<-as.data.frame(corr)
-
-dim(corr.df)
-
-corr.df[is.na(corr.df)] <- 0
-corr.df[corr.df == 1.0] <- 0
-library(dplyr)
-res<-corr.df %>% select_if(~any(. > 0.6))
-
-colnames(res)
-
-#remove one by one to till all the high-correlated columns are removed
+#remove variables with more than X of missings
+df<-missingness$missingness %>% filter(rate < 37.0)
+df<-df %>% filter(rate > 0)
 
 
-out<-vector()
-for (n in numerics) {
-  t<-corr.df[[n]]
-  
-  t[is.na(t)] <- 0
-  
-  
-  if (t > abs(0.1) & t < abs(1))
-  {
-    out<-cbind(out, n)
+missing_variables<-as.character(df$var)
+
+miss<-missingMatrix(ocmovies[missing_variables])
+
+
+lmiss <- lapply(miss, as.logical)
+
+
+for(v in missing_variables) {
+  for(j in missing_variables) {
+    print(paste(v,j))
+
+    if (protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" &
+        protocol[v, "Data.type"] != "Boolean" & protocol[j, "Data.type"] != "Boolean")
+    {
+      val.min <-   as.numeric(str_trim(protocol[v, 'Min']))
+      val.max <- as.numeric(str_trim(protocol[v, 'Max']))
+
+
+      if (v!=j)
+      {
+        if (val.max> 1000000) {
+          is_missing<-lmiss[[j]]
+          p<-ggplot(ocmovies) +
+            geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
+            scale_x_continuous(name = paste("Log of", v)) +
+            ggtitle(paste("Density plot of", v, "with and without missing", j))
+          print(p)
+        }
+        else
+        {
+          is_missing<-lmiss[[j]]
+          p<-ggplot(ocmovies) +
+            geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
+            scale_x_continuous(name = v) +
+            ggtitle(paste("Density plot of", v, "with and without missing", j))
+          print(p)
+
+        }
+      }
+    }
   }
-  
 }
 
+##########################################################################################
+# Misssing: Create a table with all the variable that have missing values and explain how missings were created (MCAR and etc.)
+##########################################################################################
+
+
 require(MissMech)
-ocmovies1<-ocmovies[numerics]
-corr<-cor(ocmovies1, method = "pearson", use = "complete.obs")
 
-corrplot(corr, method="circle")
-
-#remove high correlated variables
+miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[10:34]]), del.lesscases = 10)
 
 
-corr.df[corr.df$depart_Lighting > 0.1 & corr.df$depart_Lighting < 1]
+#TestMCARNormality(data=as.matrix(movies[numerics_wo_revenue]), del.lesscases = 1)
 
 
-miss1 <- TestMCARNormality(data=ocmovies[c('depart_Custom_Mkup','director_movies_cnt', 'depart_Visual_Effects', 'budget')])
+dd<-protocol[missing_variables,] %>% filter(Value.type == 'Numeric')
 
-mimiss1
+ff<-str_trim(dd$Feature.name)
+
+TestMCARNormality(data=as.matrix(movies[ff[1:15]]), del.lesscases = 1)
+
+nummovies<-movies[, (names(movies) %in% numerics)]
+
+TestMCARNormality(data=as.matrix(nummovies[, !(names(nummovies) %in% high_missing_variables)]), del.lesscases = 1)
+
+
+
+
 
 
 ##########################################################################################
 # Misssing: Do imputation for each variable according to the appropriate technic
 ##########################################################################################
 
+library(mice)
+init = mice(movies[missing_variables], maxit=0)
+meth = init$method
+predM = init$predictorMatrix
+
+predM
+set.seed(103)
+imputed = mice(movies[missing_variables], method=meth, predictorMatrix=predM, m=5)
+
+
+n <- 300
+p <- 5
+r <- 0.3
+mu <- rep(0, p)
+sigma <- r * (matrix(1, p, p) - diag(1, p))+ diag(1, p)
+set.seed(110)
+eig <- eigen(sigma)
+sig.sqrt <- eig$vectors %*%  diag(sqrt(eig$values)) %*%  solve(eig$vectors)
+sig.sqrt <- (sig.sqrt + sig.sqrt) / 2
+y <- matrix(rnorm(n * p), nrow = n) %*%  sig.sqrt
+tmp <- y
+for (j in 2:p){
+  y[tmp[, j - 1] > 0.8, j] <- NA
+}
+out <- TestMCARNormality(data = y, alpha =0.1)
+print(out)
