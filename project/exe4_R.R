@@ -1,8 +1,8 @@
 #home
-setwd("C://Users//Cherch//DataScience//project")
+#setwd("C://Users//Cherch//DataScience//project")
 
 #work
-#setwd("C://bb//DataScience//project")
+setwd("C://bb//DataScience//project")
 
 
 
@@ -251,10 +251,9 @@ out<-outlierMatrix(movies,threshold = movies_threshold)
 ocmovies<-movies
 
 options(repr.plot.width = 16, repr.plot.height = 16)
-par(mfrow=c(1,1))
+par(mfrow=c(2,2))
 for(v in numerics) {
   #look on variable with some variability
-
 
 
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
@@ -267,11 +266,9 @@ for(v in numerics) {
 
     #dev.new(width=5, height=4)
     scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
-                xlab="Revenue", ylab=v,
+                xlab=v, ylab='revenue',
                 main=paste(v, "before outliers cleaup"))
     abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
-
-
 
 
     ##############################
@@ -279,40 +276,35 @@ for(v in numerics) {
     ##############################
 
 
-#    if (protocol[v,"Outlier.treatment"] == "Leave"){
+    if (protocol[v,"Outlier.treatment"] == "Leave"){
 
-#      print("Do nothing")
+      print("Do nothing")
 
-#    } else if (protocol[v,"Outlier.treatment"] == "Null"){
+    } else if (protocol[v,"Outlier.treatment"] == "Null"){
 
       #drop outlier value (replace by NA)
       ocmovies[which(out[v] == 1), v]<-NA
 
-    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-    text(x = 0.5, y = 0.5, paste("NA method on ", v),
-         cex = 1.6, col = "black")
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("NA method on ", v),
+           cex = 1.6, col = "black")
 
-    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
 
-    barplot(table(ocmovies[[v]]))
+      barplot(table(ocmovies[[v]]))
 
-    #dev.new(width=5, height=4)
-    scatterplot(ocmovies[['revenue']] ~ movies[[v]],
-                xlab="Revenue", ylab=v,
-                main=paste(v, "after outliers cleaup"))
+      #dev.new(width=5, height=4)
+      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
+                  xlab="Revenue", ylab=v,
+                  main=paste(v, "after outliers cleaup"))
 
-    dtt<-dim(table(ocmovies[[v]]))
-    if (length(dtt) != 1) {
-      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-    }
-
-
+      dtt<-dim(table(ocmovies[[v]]))
+      if (length(dtt) != 1) {
+        abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+      }
 
 
-
-
-
-#    } else if (protocol[v,"Outlier.treatment"] == "Log"){
+    } else if (protocol[v,"Outlier.treatment"] == "Log"){
 
       ocmovies[[v]]<-log(movies[[v]] + 1)
 
@@ -324,13 +316,12 @@ for(v in numerics) {
 
       barplot(table(ocmovies[[v]]))
 
-      #dev.new(width=5, height=4)
       scatterplot(ocmovies[['revenue']] ~ movies[[v]],
                   xlab="Revenue", ylab=v,
                   main=paste(v, "after outliers cleaup"))
       abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
 
-#    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
+    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
 
       ocmovies[[v]]<-sqrt(movies[[v]] + 1)
 
@@ -349,7 +340,7 @@ for(v in numerics) {
       abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
 
 
-#    } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
+    } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
 
       ocmovies<-outlierMatrixWinsorizing(movies, v, movies_threshold)
 
@@ -368,33 +359,27 @@ for(v in numerics) {
       abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
 
 
-#    } else if (protocol[v,"Outlier.treatment"] == "DropVar"){
+    } else if (protocol[v,"Outlier.treatment"] == "Categorize"){
 
-#      ocmovies[,! names(ocmovies) == v]
-#    }
-
-
+      cat_num_cut<-protocol[v,"Categories.num"]
+      cat_num_cut_vec<-unlist(strsplit(cat_num_cut, ","))
 
 
-#     print(protocol[v,"Notes"])
+      cat_names<-protocol[v,"Categories.names"]
+      cat_names_vec<-unlist(strsplit(cat_names, ","))
+
+      st<-sprintf("Numeric variable %s Was categorized, values were replaced with %d categories \
+                  with following names %s", v, cat_num, cat_names)
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, st,
+           cex = 1, col = "black")
 
 
+      ocmovies[[v]]<-cut(movies[[v]], breaks = as.numeric(cat_num_cut_vec), labels = cat_names_vec,
+                                            right = FALSE)
 
-
-
-    #hist(ocmovies[[v]], freq = FALSE,xlab = v,  main = "Without Outliers")
-    #lines(density(ocmovies[[v]], na.rm = TRUE))
-
-    #plot(y = rcmovies$revenue, x = rcmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(with Outliers)", xlab = v, ylab = "revenue")
-    #abline(lm(rcmovies$revenue ~ rcmovies[[v]]))
-
-    #plot(y = ocmovies$revenue, x = ocmovies[[v]], pch = 16, cex = 1.3, col = "blue", main = "Distribution against Revenure(without Outliers)", xlab = v, ylab = "revenue")
-    #abline(lm(ocmovies$revenue ~ ocmovies[[v]]))
-
-    #print(paste("T-Test of",v))
-    #res<-t.test(ocmovies[[v]], rcmovies[[v]])
-
-    #print(res)
+      plot(ocmovies[[v]], xlab = v)
+    }
 
 }
 par(mfrow=c(1,1))
