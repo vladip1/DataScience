@@ -1,8 +1,8 @@
 #home
-#setwd("C://Users//Cherch//DataScience//project")
+setwd("C://Users//Cherch//DataScience//project")
 
 #work
-setwd("C://bb//DataScience//project")
+#setwd("C://bb//DataScience//project")
 
 
 
@@ -25,6 +25,9 @@ head(protocol)
 rownames(protocol) <- str_trim(protocol$Feature.name)
 
 load("../data/BoxOffice_ff.RData")
+
+load("../data/BoxOffice_ff_with_ouliers.RData")
+save(ocmovies,file="../data/BoxOffice_ff_with_ouliers.RData")
 
 ##########################################################################################
 # Function that print plot per variable type
@@ -201,6 +204,10 @@ vis_miss(rcmovies[categoricals])
 # Outliers: checking distribution with and without outliers agains revenue
 ##########################################################################################
 
+# list all the numeric variables
+numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
+
+
 outlierMatrix <- function(data,threshold=1.5) {
   vn <- names(data)
   outdata <- data.frame(row1=1:nrow(data))
@@ -221,7 +228,7 @@ outlierMatrix <- function(data,threshold=1.5) {
   outdata$row1 <- NULL
   return(outdata)
 }
-
+##########################################################################################
 outlierMatrixWinsorizing <- function(data, v, threshold=1.5) {
   if(is.numeric(data[[v]])) {
     med<- median(data[[v]], na.rm = T)
@@ -230,20 +237,21 @@ outlierMatrixWinsorizing <- function(data, v, threshold=1.5) {
     irq_level <- (outhigh - outlow) * threshold
     outlow <- outlow - irq_level
     outhigh <- outhigh +  irq_level
-
+    
     data[data[[v]] < outlow, v]<-outlow
-
+    
     data[data[[v]] > outhigh, v]<-outhigh
-
+    
   } else {
     mv <- rep(0,nrow(data))
   }
-
+  
   return(data)
 }
 
+##########################################################################################
 
-movies_threshold<-1.5
+movies_threshold<-2.0
 
 out<-outlierMatrix(movies,threshold = movies_threshold)
 
@@ -251,138 +259,160 @@ out<-outlierMatrix(movies,threshold = movies_threshold)
 ocmovies<-movies
 
 options(repr.plot.width = 16, repr.plot.height = 16)
-par(mfrow=c(2,2))
 for(v in numerics) {
   #look on variable with some variability
-
-
+  
+  
+  par(mfrow=c(1,1))
+  #options(repr.plot.width = 8, repr.plot.height = 4)
+  
+  plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+  text(x = 0.5, y = 0.5, v,
+       cex = 1.6, col = "black")
+  
+  par(mfrow=c(2,2))
+  #options(repr.plot.width = 8, repr.plot.height = 8)
+  hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
+  
+  barplot(table(movies[[v]]))
+  
+  #dev.new(width=5, height=4)
+  scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
+              xlab=v, ylab='Revenue',
+              main=paste(v, "before outliers cleaup"))
+  abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
+  
+  
+  ##############################
+  #Handle outliers
+  ##############################
+  
+  
+  if (protocol[v,"Outlier.treatment"] == "Leave"){
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-    text(x = 0.5, y = 0.5, v,
+    text(x = 0.5, y = 0.5, paste("Do nothing for", v),
          cex = 1.6, col = "black")
-
-    hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
-
-    barplot(table(movies[[v]]))
-
+    
+  } else if (protocol[v,"Outlier.treatment"] == "Null"){
+    
+    #drop outlier value (replace by NA)
+    ocmovies[which(out[v] == 1), v]<-NA
+    
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("Null method on ", v),
+         cex = 1.6, col = "black")
+    
+    par(mfrow=c(2,2))
+    #options(repr.plot.width = 8, repr.plot.height = 8)
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+    
+    barplot(table(ocmovies[[v]]))
+    
     #dev.new(width=5, height=4)
-    scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
-                xlab=v, ylab='revenue',
-                main=paste(v, "before outliers cleaup"))
-    abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
-
-
-    ##############################
-    #Handle outliers
-    ##############################
-
-
-    if (protocol[v,"Outlier.treatment"] == "Leave"){
-
-      print("Do nothing")
-
-    } else if (protocol[v,"Outlier.treatment"] == "Null"){
-
-      #drop outlier value (replace by NA)
-      ocmovies[which(out[v] == 1), v]<-NA
-
-      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-      text(x = 0.5, y = 0.5, paste("NA method on ", v),
-           cex = 1.6, col = "black")
-
-      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
-
-      barplot(table(ocmovies[[v]]))
-
-      #dev.new(width=5, height=4)
-      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
-                  xlab="Revenue", ylab=v,
-                  main=paste(v, "after outliers cleaup"))
-
-      dtt<-dim(table(ocmovies[[v]]))
-      if (length(dtt) != 1) {
-        abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-      }
-
-
-    } else if (protocol[v,"Outlier.treatment"] == "Log"){
-
-      ocmovies[[v]]<-log(movies[[v]] + 1)
-
-      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-      text(x = 0.5, y = 0.5, paste("Log method on ", v),
-           cex = 1.6, col = "black")
-
-      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
-
-      barplot(table(ocmovies[[v]]))
-
-      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
-                  xlab="Revenue", ylab=v,
-                  main=paste(v, "after outliers cleaup"))
-      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-
-    } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
-
-      ocmovies[[v]]<-sqrt(movies[[v]] + 1)
-
-      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-      text(x = 0.5, y = 0.5, paste("Sqrt method on ", v),
-           cex = 1.6, col = "black")
-
-      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
-
-      barplot(table(ocmovies[[v]]))
-
-      dev.new(width=5, height=4)
-      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
-                  xlab="Revenue", ylab=v,
-                  main=paste(v, "after outliers cleaup"))
-      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-
-
-    } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
-
-      ocmovies<-outlierMatrixWinsorizing(movies, v, movies_threshold)
-
-      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-      text(x = 0.5, y = 0.5, paste("TRIM method on ", v),
-           cex = 1.6, col = "black")
-
-      hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
-
-      barplot(table(ocmovies[[v]]))
-
-      dev.new(width=5, height=4)
-      scatterplot(ocmovies[['revenue']] ~ movies[[v]],
-                  xlab="Revenue", ylab=v,
-                  main=paste(v, "after outliers cleaup"))
-      abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-
-
-    } else if (protocol[v,"Outlier.treatment"] == "Categorize"){
-
-      cat_num_cut<-protocol[v,"Categories.num"]
-      cat_num_cut_vec<-unlist(strsplit(cat_num_cut, ","))
-
-
-      cat_names<-protocol[v,"Categories.names"]
-      cat_names_vec<-unlist(strsplit(cat_names, ","))
-
-      st<-sprintf("Numeric variable %s Was categorized, values were replaced with %d categories \
+    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
+                xlab=v, ylab="Revenue",
+                main=paste(v, "after outliers cleaup"))
+    
+    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    
+  } else if (protocol[v,"Outlier.treatment"] == "Log"){
+    
+    ocmovies[[v]]<-log(movies[[v]] + 1)
+    
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("Log method on ", v),
+         cex = 1.6, col = "black")
+    par(mfrow=c(2,2))
+    #options(repr.plot.width = 8, repr.plot.height = 8)
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+    
+    barplot(table(ocmovies[[v]]))
+    
+    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
+                xlab=v, ylab="Revenue",
+                main=paste(v, "after outliers cleaup"))
+    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    
+  } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
+    
+    ocmovies[[v]]<-sqrt(movies[[v]] + 1)
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("Sqrt method on ", v),
+         cex = 1.6, col = "black")
+    par(mfrow=c(2,2))
+    #options(repr.plot.width = 8, repr.plot.height = 8)
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+    
+    barplot(table(ocmovies[[v]]))
+    
+    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
+                xlab=v, ylab="Revenue",
+                main=paste(v, "after outliers cleaup"))
+    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    
+    
+  } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
+    
+    ocmovies<-outlierMatrixWinsorizing(movies, v, movies_threshold)
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("Winsorizing method on ", v),
+         cex = 1.6, col = "black")
+    
+    par(mfrow=c(2,2))
+    #options(repr.plot.width = 8, repr.plot.height = 8)
+    hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
+    
+    barplot(table(ocmovies[[v]]))
+    
+    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
+                xlab=v, ylab="Revenue",
+                main=paste(v, "after outliers cleaup"))
+    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    
+    
+  } else if (protocol[v,"Outlier.treatment"] == "Categorize"){
+    
+    cat_num<-protocol[v,"Categories.num"]
+    cat_num_vec<-unlist(strsplit(cat_num, ","))
+    
+    
+    cat_names<-protocol[v,"Categories.names"]
+    cat_names_vec<-unlist(strsplit(cat_names, ","))
+    
+    ocmovies[[v]]<-cut(movies[[v]], breaks = as.numeric(cat_num_vec), labels = cat_names_vec,
+                       right = FALSE)
+    
+    st<-sprintf("Numeric variable %s Was categorized, values were replaced with %s breaks \
                   with following names %s", v, cat_num, cat_names)
-      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-      text(x = 0.5, y = 0.5, st,
-           cex = 1, col = "black")
-
-
-      ocmovies[[v]]<-cut(movies[[v]], breaks = as.numeric(cat_num_cut_vec), labels = cat_names_vec,
-                                            right = FALSE)
-
-      plot(ocmovies[[v]], xlab = v)
-    }
-
+    
+    par(mfrow=c(1,1))
+    #options(repr.plot.width = 8, repr.plot.height = 4)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, st,
+         cex = 1.6, col = "black")
+    #options(repr.plot.width = 8, repr.plot.height = 8)
+    par(mfrow=c(1,1))
+    plot(ocmovies[[v]], xlab = v)
+  }
+  
 }
 par(mfrow=c(1,1))
+
 
 ##########################################################################################
 #getMissingness <- function (data, getRows = FALSE) {
@@ -485,7 +515,7 @@ for(v in missing_variables) {
 
 require(MissMech)
 
-miss1 <- TestMCARNormality(data=as.matrix(rcmovies[missing_variables[10:34]]), del.lesscases = 10)
+miss1 <- TestMCARNormality(data=as.matrix(ocmovies[missing_variables[10:34]]), del.lesscases = 10)
 
 
 #TestMCARNormality(data=as.matrix(movies[numerics_wo_revenue]), del.lesscases = 1)
