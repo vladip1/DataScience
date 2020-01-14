@@ -13,7 +13,7 @@ outlierMatrix <- function(data,threshold=1.5) {
     for(v in vn) {
         if(is.numeric(data[[v]])) {
             med<- median(data[[v]], na.rm = T)
-            outlow <- quantile(data[[v]],probs = 0.25,na.rm = T) 
+            outlow <- quantile(data[[v]],probs = 0.25,na.rm = T)
             outhigh <- quantile(data[[v]],probs = 0.75, na.rm = T)
             irq_level <- (outhigh - outlow) * threshold
             outlow <- outlow - irq_level
@@ -59,13 +59,13 @@ getMissingness <- function (data, getRows = FALSE) {
     cnt$rate <- round((cnt$na.count/nrow(nadf)) * 100, 1)
     nadf$na.cnt <- 0
     nadf$na.cnt <- rowSums(nadf)
-    cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count > 
+    cnt <- cnt %>% dplyr::arrange(desc(na.count)) %>% dplyr::filter(na.count >
         0)
     totmiss <- nadf %>% dplyr::filter(na.cnt == 0) %>% dplyr::tally()
     idx <- NULL
-    msg <- (paste("This dataset has ", as.character(totmiss), 
-        " (", as.character(round(totmiss/nrow(data) * 100, 1)), 
-        "%)", " complete rows. Original data has ", nrow(data), 
+    msg <- (paste("This dataset has ", as.character(totmiss),
+        " (", as.character(round(totmiss/nrow(data) * 100, 1)),
+        "%)", " complete rows. Original data has ", nrow(data),
         " rows.", sep = ""))
     if (getRows == TRUE & totmiss != 0) {
         nadf$rn <- seq_len(nrow(data))
@@ -87,7 +87,7 @@ head(outlierMatrix(animals,threshold=1.5))
 ## Using IRQ for catching univariate outliers (1.5 x IRQ)
 head(outlierMatrix(animals,threshold=2.0))
 
-## Visual determination of univariate outliers using boxplots 
+## Visual determination of univariate outliers using boxplots
 options(repr.plot.width = 8, repr.plot.height = 8)
 par(mfrow=c(4,3))
 for(v in names(animals[,2:8])) {
@@ -96,7 +96,7 @@ for(v in names(animals[,2:8])) {
 par(mfrow=c(1,1))
 
 
-## Visual determination of univariate outliers using scatter plots 
+## Visual determination of univariate outliers using scatter plots
 options(repr.plot.width = 8, repr.plot.height = 8)
 par(mfrow=c(4,3))
 for(v in names(animals[,2:8])) {
@@ -153,17 +153,19 @@ vis_miss(animals)
 
 # require(naniar)
 options(repr.plot.width = 8, repr.plot.height = 4)
-gg_miss_fct(x=animals, fct=species) + 
+gg_miss_fct(x=animals, fct=species) +
 theme(axis.text.x = element_text(angle=90, size=8))
 
 # require(MissMech)
 animals2 <- animals[,c(4,5,7,8)]
-miss1 <- TestMCARNormality(data=animals2)
+getMissingness(animals2)
+
+miss1 <- ?TestMCARNormality(data=animals2)
 miss1
 
 ### Impute missing values
 
-miss1 <- TestMCARNormality(data=animals2, , del.lesscases = 1, imputation.number = 10)
+miss1 <- TestMCARNormality(data=animals2, del.lesscases = 1, imputation.number = 10)
 summary(miss1)
 
 
@@ -178,7 +180,7 @@ idx <- miss1$caseorder
 head(animals.imp)
 dim(animals.imp)
 
-## Visualize the imputed missing values using scatter plots 
+## Visualize the imputed missing values using scatter plots
 options(repr.plot.width = 8, repr.plot.height = 8)
 
 misspoints <- missingMatrix(animals[idx,])
@@ -187,14 +189,14 @@ par(mfrow=c(4,3))
 for(v in names(animals2)) {
     scatter.smooth(animals.imp[[v]] ~ animals[idx,"species"], main=v, xlab="animals",ylab=v, family="symmetric",
                   lpars =list(col = "red", lwd = 2, lty = 2), col=misspoints[idx,v]+1)
-  
+
 }
 
 scatter.smooth(animals.imp[[v]] ~ animals[idx,"species"])
 
 
 # library(mice)
-init = mice(animals, maxit=0) 
+init = mice(animals, maxit=0)
 meth = init$method
 predM = init$predictorMatrix
 
@@ -281,6 +283,6 @@ summary(m.out)
   options(repr.plot.width = 8, repr.plot.height = 8)
 plot(m.out, type = "hist")
 
-animals.matched <- match.data(m.out) 
+animals.matched <- match.data(m.out)
 animals.matched %>% arrange(distance)
 
