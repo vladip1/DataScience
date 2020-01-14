@@ -137,29 +137,13 @@ for (n in rownames(protocol)){
 numerics<-str_trim(protocol$Feature.name[protocol$Value.type == "Numeric"])
 
 
-# list all the cat variables
-categoricals<-str_trim(protocol$Feature.name[protocol$Value.type == "Categorical"])
-
-#remove movie_id
-categoricals<-categoricals[-grep('movie_id', categoricals)]
-
-#remove original_languages
-categoricals<-categoricals[-grep('original_language', categoricals)]
-
-#remove runtime_cat
-categoricals<-categoricals[-grep('runtime_cat', categoricals)]
-
 #install.packages("corrplot")
 library(corrplot)
 
-corr<-cor(cmovies[numerics], method = "pearson", use = "complete.obs")
+corr<-cor(ocmovies[numerics], method = "pearson", use = "complete.obs")
 
 corrplot(corr, method="circle")
 
-
-corr<-cor(cmovies[categoricals], method = "spearman", use = "complete.obs")
-
-corrplot(corr, method="circle")
 
 ###################################
 #remove highly correlated variables
@@ -192,13 +176,13 @@ missingMatrix <- function(data) {
   return(missdata)
 }
 
-miss<-missingMatrix(rcmovies)
+miss<-missingMatrix(ocmovies)
 
 options(repr.plot.width = 4, repr.plot.height = 4)
 library(naniar)
-vis_miss(rcmovies[rnumerics])
+vis_miss(ocmovies[numerics])
 
-vis_miss(rcmovies[categoricals])
+vis_miss(ocmovies[categoricals])
 
 ##########################################################################################
 # Outliers: checking distribution with and without outliers
@@ -264,27 +248,21 @@ for(v in numerics) {
   #look on variable with some variability
 
 
-  par(mfrow=c(1,1))
+  par(mfrow=c(2,2))
   #options(repr.plot.width = 8, repr.plot.height = 4)
 
   plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
   text(x = 0.5, y = 0.5, v,
        cex = 1.6, col = "black")
 
-  par(mfrow=c(2,2))
-  #options(repr.plot.width = 8, repr.plot.height = 8)
   hist(movies[[v]], freq = FALSE, xlab = v,  main = "With Outliers")
 
   barplot(table(movies[[v]]))
 
-  #dev.new(width=5, height=4)
-  scatterplot(movies[['revenue']] ~ movies[[v]] | out[[v]],
-              xlab=v, ylab='Revenue',
-              main=paste(v, "before outliers cleaup"))
-  abline(lm(ocmovies$revenue ~ movies[[v]]), col = 'green')
-
-  scatter.smooth(movies[['revenue']] ~ movies[[v]], main=v, xlab="animals",ylab=v, family="symmetric",
+  
+  scatter.smooth(movies[['revenue']] ~ movies[[v]], main=v, xlab=v ,ylab="revenue", family="symmetric",
                  lpars =list(col = "green", lwd = 2, lty = 2), col=out[[v]]+1)
+
 
 
 
@@ -298,16 +276,16 @@ for(v in numerics) {
             protocol[v, "Outlier.treatment"],
             protocol[v, "Outlier.Notes"])
 
-  par(mfrow=c(1,1))
-  #options(repr.plot.width = 8, repr.plot.height = 4)
-  plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
-  text(x = 0.5, y = 0.5, mes,
-       cex = 1.6, col = "black")
 
 
   if (protocol[v,"Outlier.treatment"] == "Leave"){
 
-    par(mfrow=c(1,1))
+    par(mfrow=c(1,2))
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     #options(repr.plot.width = 8, repr.plot.height = 4)
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
     text(x = 0.5, y = 0.5, paste("Do nothing for", v),
@@ -320,17 +298,20 @@ for(v in numerics) {
 
 
     par(mfrow=c(2,2))
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     #options(repr.plot.width = 8, repr.plot.height = 8)
     hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
 
     barplot(table(ocmovies[[v]]))
 
-    #dev.new(width=5, height=4)
-    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
-                xlab=v, ylab="Revenue",
-                main=paste(v, "after outliers cleaup"))
-
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    
+    scatter.smooth(ocmovies[['revenue']] ~ ocmovies[[v]], main=paste(v, "after outliers cleaup"), xlab=v ,ylab="revenue", family="symmetric",
+                   lpars =list(col = "green", lwd = 2, lty = 2))
+    
 
   } else if (protocol[v,"Outlier.treatment"] == "Log"){
 
@@ -338,31 +319,36 @@ for(v in numerics) {
 
 
     par(mfrow=c(2,2))
-    #options(repr.plot.width = 8, repr.plot.height = 8)
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
 
     barplot(table(ocmovies[[v]]))
 
-    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
-                xlab=v, ylab="Revenue",
-                main=paste(v, "after outliers cleaup"))
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
+    scatter.smooth(ocmovies[['revenue']] ~ ocmovies[[v]], main=paste(v, "after outliers cleaup"), xlab=v ,ylab="revenue", family="symmetric",
+                   lpars =list(col = "green", lwd = 2, lty = 2))
+    
 
   } else if (protocol[v,"Outlier.treatment"] == "Sqrt"){
 
     ocmovies[[v]]<-sqrt(movies[[v]] + 1)
 
     par(mfrow=c(2,2))
-    #options(repr.plot.width = 8, repr.plot.height = 8)
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
 
     barplot(table(ocmovies[[v]]))
 
-    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
-                xlab=v, ylab="Revenue",
-                main=paste(v, "after outliers cleaup"))
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-
+    scatter.smooth(ocmovies[['revenue']] ~ ocmovies[[v]], main=paste(v, "after outliers cleaup"), xlab=v ,ylab="revenue", family="symmetric",
+                   lpars =list(col = "green", lwd = 2, lty = 2))
+    
 
   } else if (protocol[v,"Outlier.treatment"] == "Winsorizing"){
 
@@ -370,16 +356,17 @@ for(v in numerics) {
 
 
     par(mfrow=c(2,2))
-    #options(repr.plot.width = 8, repr.plot.height = 8)
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     hist(ocmovies[[v]], freq = FALSE, xlab = v,  main = "without Outliers")
 
     barplot(table(ocmovies[[v]]))
 
-    scatterplot(ocmovies[['revenue']] ~ ocmovies[[v]],
-                xlab=v, ylab="Revenue",
-                main=paste(v, "after outliers cleaup"))
-    abline(lm(ocmovies$revenue ~ ocmovies[[v]]), col = 'green')
-
+    scatter.smooth(ocmovies[['revenue']] ~ ocmovies[[v]], main=paste(v, "after outliers cleaup"), xlab=v ,ylab="revenue", family="symmetric",
+                   lpars =list(col = "green", lwd = 2, lty = 2))
+    
 
   } else if (protocol[v,"Outlier.treatment"] == "Categorize"){
 
@@ -396,13 +383,16 @@ for(v in numerics) {
     st<-sprintf("Numeric variable %s Was categorized, values were replaced with %s breaks \
                   with following names %s", v, cat_num, cat_names)
 
-    par(mfrow=c(1,1))
-    #options(repr.plot.width = 8, repr.plot.height = 4)
+    par(mfrow=c(2,2))
+    
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, mes,
+         cex = 1.6, col = "black")
+    
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
     text(x = 0.5, y = 0.5, st,
          cex = 1.6, col = "black")
-    #options(repr.plot.width = 8, repr.plot.height = 8)
-    par(mfrow=c(1,1))
+    
     plot(ocmovies[[v]], xlab = v)
   }
 
@@ -467,10 +457,12 @@ miss<-missingMatrix(ocmovies[missing_variables])
 
 lmiss <- lapply(miss, as.logical)
 
+par(mfrow=c(10,10))
+
 
 for(v in missing_variables) {
   for(j in missing_variables) {
-    print(paste(v,j))
+    
 
     if (protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" &
         protocol[v, "Data.type"] != "Boolean" & protocol[j, "Data.type"] != "Boolean")
@@ -487,7 +479,6 @@ for(v in missing_variables) {
             geom_density(aes(log(ocmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = paste("Log of", v)) +
             ggtitle(paste("Density plot of", v, "with and without missing", j))
-          print(p)
         }
         else
         {
@@ -496,8 +487,7 @@ for(v in missing_variables) {
             geom_density(aes(ocmovies[[v]], group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = v) +
             ggtitle(paste("Density plot of", v, "with and without missing", j))
-          print(p)
-
+    
         }
       }
     }
@@ -635,3 +625,36 @@ for (j in 2:p){
 }
 out <- TestMCARNormality(data = y, alpha =0.1)
 print(out)
+
+
+missingness<-getMissingness(mmovies)
+
+df<-missingness$missingness %>% filter(rate < 1.0)
+low_missing_variables<-as.character(df$var)
+
+DF <- data.frame(x = c(1, 2, 3), y = c(0, 10, NA), z=c(NA, 33, 22))
+DF[!is.na(DF$y),]
+
+missingness<-getMissingness(ocmovies)
+
+df<-missingness$missingness %>% filter(rate < 1.0)
+low_missing_variables<-as.character(df$var)
+
+ocmovies[!is.na(ocmovies[low_missing_variables]),]
+
+#####################################################################
+missingness<-getMissingness(ocmovies)
+
+df<-missingness$missingness %>% filter(rate >= 37.0)
+high_missing_variables<-as.character(df$var)
+
+high_missing_variables_wo_revenue<-high_missing_variables[-grep('\\brevenue\\b', high_missing_variables)]
+
+mmovies<-ocmovies[, !(names(ocmovies) %in% high_missing_variables_wo_revenue)]
+
+vis_miss(mmovies[1:round(ncol(mmovies)/2)])
+
+vis_miss(mmovies[round(ncol(mmovies)/2): ncol(mmovies)])
+
+
+
