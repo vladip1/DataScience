@@ -211,6 +211,17 @@ final_missing_numerics<-missing_numerics
 #budget cannot be imputated due to bad distribution of missing values on "revenue"
 final_missing_numerics<-setdiff(final_missing_numerics, "budget")
 
+#budget
+f.var<-"budget"
+hist(mmovies[[f.var]])
+mmovies[[f.var]]<-log(mmovies[[f.var]] + 1)
+
+
+fbreaks<-c(1,2,3)
+flabels<-c("a", "b")
+mmovies[[f.var]]<-cut(mmovies[[f.v]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
 
 #popularity cannot be imputated due to bad distribution of missing values on "revenue", on "depart_Art", on "depart_Production"
 final_missing_numerics<-setdiff(final_missing_numerics, "popularity")
@@ -259,7 +270,42 @@ final_missing_numerics<-setdiff(final_missing_numerics, "depart_Production")
 #try to find MCAR variables
 ##########################################################
 
+mm<-mmovies[final_missing_numerics]
+
+vis_miss(mm)
+
+require(MissMech)
+
+miss1 <- TestMCARNormality(data=mm, del.lesscases = 6)
+
+
 #remove all the observations missing in the revenue missing 
+
+final_missing_numerics<-c("revenue", "budget", final_missing_numerics)
+mm1<-mmovies[final_missing_numerics]
+
+mm2<-mm1 %>% drop_na("revenue")
+
+dim(mm2)
+miss2 <- TestMCARNormality(data=mm2, del.lesscases = 1)
+
+vis_miss(mm2)
+
+final_missing_numerics<-setdiff(final_missing_numerics, c("actor0_prev_revenue", "actor1_prev_revenue", "actor2_prev_revenue"))
+mm3<-mmovies[final_missing_numerics]
+
+mm3.1<-mm3 %>% drop_na("revenue")
+
+miss3 <- TestMCARNormality(data=mm3, del.lesscases = 3)
+
+
+final_missing_numerics<-setdiff(final_missing_numerics, c("budget", "revenue"))
+
+mm4<-mmovies[final_missing_numerics]
+miss4 <- TestMCARNormality(data=mm4, del.lesscases = 1)
+
+vis_miss(mm3)
+
 
 ##########################################################
 #those that cannot be inputated - turn to factor 
