@@ -1,10 +1,10 @@
 
 options(warn=-1)
 
-#home 
+#home
 setwd("C://Users//Cherch//DataScience//project")
 
-#work 
+#work
 #setwd("C://bb//DataScience//project")
 
 
@@ -147,14 +147,14 @@ missing_numerics<-NULL
 options(repr.plot.width = 8, repr.plot.height = 8)
 
 for(j in names(mmovies)) {
-    
+
     is_missing<-lmiss[[j]]
-    
+
   for(v in names(mmovies)) {
 
 
     if (v!=j &
-        !is.na(mmovies[[v]]) & !is.na(mmovies[[j]]) & 
+        !is.na(mmovies[[v]]) & !is.na(mmovies[[j]]) &
         is.numeric(mmovies[[v]]) &
         is.numeric(mmovies[[j]]) &
         !all(is_missing == FALSE) &
@@ -164,12 +164,12 @@ for(j in names(mmovies)) {
         !is.na(protocol[j, "Data.type"]) &
         protocol[v, "Value.type"] == "Numeric" & protocol[j, "Value.type"] == "Numeric" &
         protocol[v, "Data.type"] != "Boolean" & protocol[j, "Data.type"] != "Boolean"){
-        
+
         print(counter)
         counter<-counter + 1
-        
+
         missing_numerics<-c(missing_numerics, j)
-        
+
         val.min <-min(mmovies[[v]], na.rm = TRUE)
         val.max <-max(mmovies[[v]], na.rm = TRUE)
 
@@ -178,22 +178,22 @@ for(j in names(mmovies)) {
             geom_density(aes(log(mmovies[[v]]), group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = paste("Log of", v)) +
             ggtitle(paste("Density plot of", v, "with and without missing", j))
-            
+
             #print(p)
-            
+
         }
         else{
             p<-ggplot(mmovies) +
             geom_density(aes(mmovies[[v]], group=is_missing, color=is_missing), size = 1) +
             scale_x_continuous(name = v) +
             ggtitle(paste("Density plot of", v, "with and without missing", j))
-            
+
             #print(p)
 
         }
-        
-        if (counter == 10) 
-        { 
+
+        if (counter == 10)
+        {
             break
         }
     }
@@ -213,13 +213,15 @@ final_missing_numerics<-setdiff(final_missing_numerics, "budget")
 
 #budget
 f.var<-"budget"
-hist(mmovies[[f.var]])
 mmovies[[f.var]]<-log(mmovies[[f.var]] + 1)
 
+hist(mmovies[[f.var]])
 
-fbreaks<-c(1,2,3)
-flabels<-c("a", "b")
-mmovies[[f.var]]<-cut(mmovies[[f.v]], breaks = fbreaks, labels = flabels,
+summary(mmovies[[f.var]])
+
+fbreaks<-c(0,11,16,20)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
                       right = FALSE)
 
 
@@ -228,7 +230,7 @@ final_missing_numerics<-setdiff(final_missing_numerics, "popularity")
 
 #runtime looks okay and can be imputated
 
-#revenue looks okay and can be imputated - not sure we shoudl do it since it's a dependent variable and missing part should be predicted - 
+#revenue looks okay and can be imputated - not sure we shoudl do it since it's a dependent variable and missing part should be predicted -
 #removing from imputation population
 final_missing_numerics<-setdiff(final_missing_numerics, "revenue")
 
@@ -279,7 +281,7 @@ require(MissMech)
 miss1 <- TestMCARNormality(data=mm, del.lesscases = 6)
 
 
-#remove all the observations missing in the revenue missing 
+#remove all the observations missing in the revenue missing
 
 final_missing_numerics<-c("revenue", "budget", final_missing_numerics)
 mm1<-mmovies[final_missing_numerics]
@@ -308,7 +310,7 @@ vis_miss(mm3)
 
 
 ##########################################################
-#those that cannot be inputated - turn to factor 
+#those that cannot be inputated - turn to factor
 ##########################################################
 
 
@@ -361,15 +363,15 @@ for (n in factors_columns){
     print(n)
     levels <- levels(mmovies[[n]])
     levels[length(levels) + 1] <- "Missing"
-    
+
     # refactor mmovies[[n]] to include "Missing" as a factor level
     # and replace NA with "None"
     mmovies[[n]] <- factor(mmovies[[n]], levels = levels)
-    
+
     mmovies[[n]][is.na(mmovies[[n]])] <- "Missing"
-    
+
     print(n)
-    
+
   }
 }
 
