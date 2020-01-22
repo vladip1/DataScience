@@ -217,8 +217,6 @@ mmovies[[f.var]]<-log(mmovies[[f.var]] + 1)
 
 hist(mmovies[[f.var]])
 
-summary(mmovies[[f.var]])
-
 fbreaks<-c(0,11,16,20)
 flabels<-c("Small", "Medium", "Large")
 mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
@@ -227,6 +225,16 @@ mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
 
 #popularity cannot be imputated due to bad distribution of missing values on "revenue", on "depart_Art", on "depart_Production"
 final_missing_numerics<-setdiff(final_missing_numerics, "popularity")
+
+f.var<-"popularity"
+
+hist(mmovies[[f.var]])
+
+fbreaks<-c(0,7,16,25)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
 
 #runtime looks okay and can be imputated
 
@@ -239,15 +247,53 @@ final_missing_numerics<-setdiff(final_missing_numerics, "revenue")
 #producers_cnt cannot be impuatted due to bad distribution of missing values on "budget", "producers_cnt", "revenue", "depart_Art", "depart_Writing"
 final_missing_numerics<-setdiff(final_missing_numerics, "producers_cnt")
 
+f.var<-"producers_cnt"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+
+fbreaks<-c(0,3,6,10)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
 
 #actor0_movies_cnt cannot be impuatted due to bad distribution of missing values on "actor0_movies_5y_cnt", "actor0_prev_revenue"
 final_missing_numerics<-setdiff(final_missing_numerics, "actor0_movies_cnt")
 
+f.var<-"actor0_movies_cnt"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,10,20,33)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
 #actor1_movies_cnt cannot be impuatted due to bad distribution of missing values on "actor1_movies_5y_cnt", "actor1_prev_revenue"
 final_missing_numerics<-setdiff(final_missing_numerics, "actor1_movies_cnt")
 
+f.var<-"actor1_movies_cnt"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,5,15,24)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+
 #actor2_movies_cnt cannot be impuatted due to bad distribution of missing values on actor1_movies_cnt, actor2_movies_cnt, actor2_prev_revenue
 final_missing_numerics<-setdiff(final_missing_numerics, "actor2_movies_cnt")
+
+f.var<-"actor2_movies_cnt"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,5,15,21)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
 
 #actor0_prev_revenue looks okay and can be imputated
 
@@ -258,11 +304,40 @@ final_missing_numerics<-setdiff(final_missing_numerics, "actor2_movies_cnt")
 #depart_Directing cannot be impuatted due to bad distribution of missing values on 'depart_Art', "depart_Production"
 final_missing_numerics<-setdiff(final_missing_numerics, "depart_Directing")
 
+f.var<-"depart_Directing"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,1,2,4)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+
 #depart_Editing cannot be impuatted due to bad distribution of missing values on 'depart_Art', "depart_Production"
 final_missing_numerics<-setdiff(final_missing_numerics, "depart_Editing")
 
+f.var<-"depart_Editing"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,2,4,6)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+
 #depart_Production cannot be impuatted due to bad distribution of missing values on 'depart_Art', "depart_Editing"
 final_missing_numerics<-setdiff(final_missing_numerics, "depart_Production")
+
+f.var<-"depart_Production"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,5,15,22)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
 
 #depart_Writing looks okay and can be imputated
 
@@ -280,61 +355,75 @@ require(MissMech)
 
 miss1 <- TestMCARNormality(data=mm, del.lesscases = 6)
 
+#it's obvios from the graph that actor0_prev_revenue, actor1_prev_revennu and actor2_prev_revenue is not MCAR nor MAR - turning them into factors
+
+final_missing_numerics<-setdiff(final_missing_numerics, "actor0_prev_revenue")
+
+f.var<-"actor0_prev_revenue"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,15,20,22)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+final_missing_numerics<-setdiff(final_missing_numerics, "actor1_prev_revenue")
+
+f.var<-"actor1_prev_revenue"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,15,20,22)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+
+final_missing_numerics<-setdiff(final_missing_numerics, "actor2_prev_revenue")
+
+f.var<-"actor2_prev_revenue"
+
+hist(mmovies[[f.var]])
+summary(mmovies[[f.var]])
+fbreaks<-c(0,15,20,22)
+flabels<-c("Small", "Medium", "Large")
+mmovies[[f.var]]<-cut(mmovies[[f.var]], breaks = fbreaks, labels = flabels,
+                      right = FALSE)
+
+
+mm<-mmovies[final_missing_numerics]
+
+dim(mm)
+
+vis_miss(mm)
+
+summary(mm)
+
+
 
 #remove all the observations missing in the revenue missing
 
-final_missing_numerics<-c("revenue", "budget", final_missing_numerics)
-mm1<-mmovies[final_missing_numerics]
+#final_missing_numerics<-c("revenue", "budget", final_missing_numerics)
+#mm1<-mmovies[final_missing_numerics]
 
-mm2<-mm1 %>% drop_na("revenue")
+#mm2<-mm1 %>% drop_na("revenue")
 
-dim(mm2)
-miss2 <- TestMCARNormality(data=mm2, del.lesscases = 1)
+#dim(mm2)
 
-vis_miss(mm2)
+require(MissMech)
 
-final_missing_numerics<-setdiff(final_missing_numerics, c("actor0_prev_revenue", "actor1_prev_revenue", "actor2_prev_revenue"))
-mm3<-mmovies[final_missing_numerics]
+miss.res <- TestMCARNormality(data=mm, del.lesscases = 6, method = "Nonparametric")
 
-mm3.1<-mm3 %>% drop_na("revenue")
+mm<-as.data.frame(miss.res$imputed.data)
 
-miss3 <- TestMCARNormality(data=mm3, del.lesscases = 3)
+for (n in final_missing_numerics) {
+  mmovies[[n]]<-mm[[n]]
+}
 
+dim(mmovies) 
 
-final_missing_numerics<-setdiff(final_missing_numerics, c("budget", "revenue"))
-
-mm4<-mmovies[final_missing_numerics]
-miss4 <- TestMCARNormality(data=mm4, del.lesscases = 1)
-
-vis_miss(mm3)
-
-
-##########################################################
-#those that cannot be inputated - turn to factor
-##########################################################
-
-
-#something
-fbreaks<-c(1,2,3)
-flabels<-c("a", "b")
-f.var<-"some"
-mmovies[[f.var]]<-cut(mmovies[[f.v]], breaks = fbreaks, labels = flabels,
-                   right = FALSE)
-
-#something
-fbreaks<-c(1,2,3)
-flabels<-c("a", "b")
-f.var<-"some"
-mmovies[[f.var]]<-cut(mmovies[[f.v]], breaks = fbreaks, labels = flabels,
-                      right = FALSE)
-
-#something
-fbreaks<-c(1,2,3)
-flabels<-c("a", "b")
-f.var<-"some"
-mmovies[[f.var]]<-cut(mmovies[[f.v]], breaks = fbreaks, labels = flabels,
-                      right = FALSE)
-
+dim(mm)
 
 ##########################################################
 #Turn Category variables to factors and add misisng level
