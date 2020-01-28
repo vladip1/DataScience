@@ -477,7 +477,7 @@ err_res <- rbind(err_res, data.frame(Name="RandomForest (ranger)", Model="mod6",
 
 
 #######################  XGBoost ###################################################################
-install.packages("xgboost")
+#install.packages("xgboost")
 library(xgboost)
 
 train1 <- Matrix::sparse.model.matrix(cnt ~ .-1, data = train)
@@ -534,6 +534,11 @@ rmsle(test$cnt,pred9)
 err_res <- rbind(err_res, data.frame(Name="SVM", Model="mod9", 
                                      RMSE=rmse(test$cnt,pred9), 
                                      RMSLE=rmsle(test$cnt,pred9)))
+
+
+##########################################################################################
+# Upload the real test
+##########################################################################################
 
 
 
