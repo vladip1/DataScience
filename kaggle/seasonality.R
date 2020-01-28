@@ -4,6 +4,7 @@ library(dplyr)
 setwd("C://Users//Cherch//DataScience//kaggle")
 
 df<-read.csv("train.csv")
+tdf<-read.csv("test.csv")
 
 dim(df)
 
@@ -333,6 +334,8 @@ days <- data.frame(weekday=(0:6),seasonal_days=stationary_dts.weekly$seasonal[2:
 
 df2 <- inner_join(df,days)
 
+tdf2<- inner_join(tdf, days)
+
 #############################################################################################
 
 dfm<-df %>% group_by(mnth) %>% summarise(month_sum=sum(cnt))
@@ -347,6 +350,8 @@ monthes <- data.frame(mnth=(1:12),seasonal_monthes=stationary_dfm$seasonal[1:12]
 
 df3 <- inner_join(df2,monthes)
 
+tdf3<- inner_join(tdf2, monthes)
+
 #############################################################################################
 
 dfs<-df %>% group_by(season) %>% summarise(season_sum=sum(cnt))
@@ -360,6 +365,7 @@ plot(stationary_dfs)
 seasons <- data.frame(season=(1:4),seasonal_season=stationary_dfs$seasonal[1:4])
 
 df4 <- inner_join(df3,seasons)
+tdf4<- inner_join(tdf3, seasons)
 #############################################################################################
 ##to do
 #arima
@@ -376,6 +382,9 @@ df4 <- inner_join(df3,seasons)
 train_test(data = df4, train_name = 'train', test_name = 'test', prop = 0.7, tableone = TRUE)
 
 head(train)
+
+train<-train %>% select(-c(1))
+test<-test %>% select(-c(1))
 
 #######################  Models ###################################################################
 
@@ -397,7 +406,7 @@ err_res <- NULL
 
 #######################  Linear Model ###################################################################
 ## model with only the original variables
-mod1 <- lm(cnt ~., data=train[,2:12])
+mod1 <- lm(cnt ~., data=train[,1:11])
 summary(mod1)
 pred1 <- predict(mod1,newdata=test)
 rmse(test$cnt,pred1)
@@ -540,7 +549,17 @@ err_res <- rbind(err_res, data.frame(Name="SVM", Model="mod9",
 # Upload the real test
 ##########################################################################################
 
+pred.res<-NULL
+pred.res$id<-tdf4$id
+pred.res$cnt<-round(predict(mod9, newdata=tdf4))
 
+write.csv(file = "result_SVM_wo_unsuperwised_columns.csv", pred.res, row.names = FALSE)
 
+#------------------------------------------------------------------------------------------
 
+pred.res<-NULL
+pred.res$id<-tdf4$id
+pred.res$cnt<-round(predict(mod7, newdata=as.matrix(tdf4)))
+
+write.csv(file = "result_XBoost_wo_unsuperwised_columns.csv", pred.res, row.names = FALSE)
 
