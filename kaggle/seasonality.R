@@ -276,7 +276,7 @@ Table1 <- function (x=NULL, y=NULL, rn=NULL, data=NULL, miss=3, catmiss=TRUE, fo
 }
 
 
-train_test <- function(data=NULL,train_name=NULL,test_name=NULL,prop=NULL,seed=123,tableone=FALSE)
+train_test <- function(data=NULL,train_name=NULL,test_name=NULL,prop=NULL,seed=round(runif(1, min=10, max=100)),tableone=FALSE)
 {
   pval <- NULL
   checkTrainTest <- function(train=NULL,test=NULL) {
@@ -319,7 +319,12 @@ train_test <- function(data=NULL,train_name=NULL,test_name=NULL,prop=NULL,seed=1
 
 
 
-setwd("C://Users//Cherch//DataScience//kaggle")
+#home
+#setwd("C://Users//Cherch//DataScience//kaggle")
+
+#work
+setwd("C://bb//DataScience//kaggle")
+
 
 df<-read.csv("train_enriched.csv")
 tdf<-read.csv("test_enriched.csv")
@@ -329,6 +334,17 @@ dim(df)
 str(df)
 
 head(df)
+
+#######################################Outliers Cleanup#############################################################################
+
+bx.hum<-boxplot(df$hum)
+df[df$hum %in% bx.hum$out, 'hum']<-NA
+
+bx.windspeed<-boxplot(df$windspeed)
+df[df$windspeed %in% bx.windspeed$out, 'windspeed']<-NA
+
+df<-na.omit(df)
+
 
 
 
@@ -376,6 +392,36 @@ seasons <- data.frame(season=(1:4),seasonal_season=stationary_dfs$seasonal[1:4])
 df4 <- inner_join(df3,seasons)
 tdf4<- inner_join(tdf3, seasons)
 #############################################################################################
+summary(df4)
+
+
+factorize <- function(data) {
+  data$cluster<-factor(data$cluster)
+  data$hcluster<-factor(data$hcluster)
+  data$season<-factor(data$season)
+  data$mnth<-factor(data$mnth)
+  data$holiday<-factor(data$holiday)
+  data$weekday<-factor(data$weekday)
+  data$workingday<-factor(data$workingday)
+  data$weathersit<-factor(data$weathersit)
+  
+  return(data)
+}
+
+df5<-factorize(df4)
+
+tdf5<-factorize(tdf4)
+
+summary(tdf5)
+
+
+summary(df5)
+
+df4<-df5
+
+tdf4<-tdf5
+
+
 ##to do
 #arima
 #add seasonality as another columne
@@ -387,198 +433,268 @@ tdf4<- inner_join(tdf3, seasons)
 #############################################################################################
 # Data Split
 #############################################################################################
+best_model<-NULL
 
-train_test(data = df4, train_name = 'train', test_name = 'test', prop = 0.7, tableone = TRUE)
+for (n in 1:50)
+{
+  train_test(data = df4, train_name = 'train', test_name = 'test', prop = 0.7, tableone = TRUE)
+  
+  head(train)
+  
+  
+  drops<-c("X", "id", "atemp", "cluster")
+  train<-train[ , !(names(train) %in% drops)]
+  test<-test[ , !(names(test) %in% drops)]
+  
+  
+  str(train)
 
-head(train)
-
-
-drops<-c("X", "id")
-train<-train[ , !(names(train) %in% drops)]
-test<-test[ , !(names(test) %in% drops)]
-
-str(train)
-
-
-
-#tdf<-tdf[ , !(names(df) %in% drops)]
-
-
-
-#######################  Models ###################################################################
-
-### The error we will use is the RMSE and RMSLE
-rmse <- function(y,y_hat) {
-  err <- sqrt(sum((y_hat-y)^2,na.rm=T)/length(y))
-  return(err)
+#  boxplot(train$atemp)
+#  boxplot(train$hum) #need to clean
+#  boxplot(train$windspeed) #need to clean
+  
+#  library(corrplot)
+  
+#  corr<-cor(df[-c(1:2)], method = "pearson", use = "complete.obs")
+  
+#  corrplot(corr, method="circle")
+  
+  
+  
+  #tdf<-tdf[ , !(names(df) %in% drops)]
+  
+  
+  
+  #######################  Models ###################################################################
+  
+  ### The error we will use is the RMSE and RMSLE
+  rmse <- function(y,y_hat) {
+    err <- sqrt(sum((y_hat-y)^2,na.rm=T)/length(y))
+    return(err)
+  }
+  
+  rmsle <- function(y,y_hat) {
+    err <- sqrt(sum((log(y_hat+1)-log(y+1))^2,na.rm=T)/length(y))
+    return(err)
+  }
+  
+  ### Table of resulting errors
+  ### Name, Model, RMSE, RMSLE
+  #err_res <- NULL
+  
+  
+  #######################  Linear Model ###################################################################
+  ## model with only the original variables
+  mod1 <- lm(cnt ~., data=train[,1:12])
+  summary(mod1)
+  pred1 <- predict(mod1,newdata=test)
+  rmse(test$cnt,pred1)
+  rmsle(test$cnt,pred1)
+  err_res <- rbind(err_res, data.frame(Name="Base Linear regression", Model="mod1", 
+                                       RMSE=rmse(test$cnt,pred1), 
+                                       RMSLE=rmsle(test$cnt,pred1)))
+  
+  ## model with all the variables
+  mod2 <- lm(cnt ~., data=train)
+  summary(mod2)
+  
+  pred2 <- predict(mod2,newdata=test)
+  rmse(test$cnt,pred2)
+  rmsle(test$cnt,pred2)
+  err_res <- rbind(err_res, data.frame(Name="Extended Linear regression", Model="mod2", 
+                                       RMSE=rmse(test$cnt,pred2), 
+                                       RMSLE=rmsle(test$cnt,pred2)))
+  
+  #######################  Desicion trees ###################################################################
+  
+  library(tree)
+  library(rpart)
+  
+  mod3 <- tree(cnt ~., data=train)
+  mod3
+  
+  pred3 <- predict(mod3,newdata=test)
+  rmse(test$cnt,pred3)
+  rmsle(test$cnt,pred3)
+  err_res <- rbind(err_res, data.frame(Name="Decision Trees-tree", Model="mod3", 
+                                       RMSE=rmse(test$cnt,pred3), 
+                                       RMSLE=rmsle(test$cnt,pred3)))
+  
+  
+  
+  mod4 <- rpart(cnt ~., data=train)
+  mod4
+  
+  pred4 <- predict(mod4,newdata=test)
+  rmse(test$cnt,pred4)
+  rmsle(test$cnt,pred4)
+  err_res <- rbind(err_res, data.frame(Name="Decision Trees-rpart", Model="mod4", 
+                                       RMSE=rmse(test$cnt,pred4), 
+                                       RMSLE=rmsle(test$cnt,pred4)))
+  err_res
+  
+  #######################  Random Forest ###################################################################
+  library(randomForest)
+  library(ranger)
+  
+  mod5 <- randomForest(cnt ~., data=train)
+  mod5
+  
+  pred5 <- predict(mod5,newdata=test)
+  rmse(test$cnt,pred5)
+  rmsle(test$cnt,pred5)
+  
+  
+  
+  err_res <- rbind(err_res, data.frame(Name="RandomForest", Model="mod5", 
+                                       RMSE=rmse(test$cnt,pred5), 
+                                       RMSLE=rmsle(test$cnt,pred5)))
+  
+  
+  mod6 <- ranger(cnt ~., data=train)
+  mod6
+  
+  pred6 <- predict(mod6,data=test)
+  #head(pred6)
+  rmse(test$cnt,pred6$predictions)
+  rmsle(test$cnt,pred6$predictions)
+  err_res <- rbind(err_res, data.frame(Name="RandomForest (ranger)", Model="mod6", 
+                                       RMSE=rmse(test$cnt,pred6$predictions), 
+                                       RMSLE=rmsle(test$cnt,pred6$predictions)))
+  
+  
+  
+  #######################  XGBoost ###################################################################
+  #install.packages("xgboost")
+  library(xgboost)
+  
+  train1 <- Matrix::sparse.model.matrix(cnt ~ .-1, data = train)
+  test1 <- Matrix::sparse.model.matrix(cnt ~ .-1, data = test)
+  
+  X_train <- train1
+  y_train <- train$cnt
+  mod7 <- xgboost(data=X_train,label=y_train, nrounds=50,print_every_n = 10)
+  
+  X_test <- test1
+  y_test <- test$cnt
+  
+  pred7 <- predict(mod7,newdata=X_test)
+  rmse(y_test,pred7)
+  rmsle(y_test,pred7)
+  err_res <- rbind(err_res, data.frame(Name="XGBoost", Model="mod7", 
+                                       RMSE=rmse(test$cnt,pred7), 
+                                       RMSLE=rmsle(test$cnt,pred7)))
+  
+  #######################  kNN ###################################################################
+  
+  ### adaboost needs that values to be normalized
+  min_max <- function(x) { (x -min(x))/(max(x)-min(x))   }
+  
+  X_train <- sapply(data.frame(as.matrix(train1)),min_max)
+  X_test <- sapply(data.frame(as.matrix(test1)),min_max)
+  
+  summary(X_train)
+  
+  library(class)
+  mod8 <- knn(X_train,X_test,cl=train$cnt)
+  
+  str(mod8)
+  
+  pred8 <- as.numeric(as.character(mod8))
+  
+  rmse(test$cnt,pred8)
+  rmsle(test$cnt,pred8)
+  err_res <- rbind(err_res, data.frame(Name="kNN", Model="mod8", 
+                                       RMSE=rmse(test$cnt,pred8), 
+                                       RMSLE=rmsle(test$cnt,pred8)))
+  
+  #######################  SVM ###################################################################
+  
+  #install.packages("liquidSVM")
+  library(liquidSVM)
+  
+  mod9 <- svm(cnt ~., train)
+  
+  pred9 <- predict(mod9, newdata=test)
+  
+  rmse(test$cnt,pred9)
+  rmsle(test$cnt,pred9)
+  err_res <- rbind(err_res, data.frame(Name="SVM", Model="mod9", 
+                                       RMSE=rmse(test$cnt,pred9), 
+                                       RMSLE=rmsle(test$cnt,pred9)))
+  plot(test$cnt, pred9, col=c('blue', 'red'))
+  
+  plot(test$cnt, pred7, col=c('blue', 'red'))
+  
+       
+  err_res
+  
+  if (rmsle(test$cnt,pred9) < 0.18)
+  {
+    break()
+  }
 }
-
-rmsle <- function(y,y_hat) {
-  err <- sqrt(sum((log(y_hat+1)-log(y+1))^2,na.rm=T)/length(y))
-  return(err)
-}
-
-### Table of resulting errors
-### Name, Model, RMSE, RMSLE
-err_res <- NULL
-
-
-#######################  Linear Model ###################################################################
-## model with only the original variables
-mod1 <- lm(cnt ~., data=train[,1:12])
-summary(mod1)
-pred1 <- predict(mod1,newdata=test)
-rmse(test$cnt,pred1)
-rmsle(test$cnt,pred1)
-err_res <- rbind(err_res, data.frame(Name="Base Linear regression", Model="mod1", 
-                                     RMSE=rmse(test$cnt,pred1), 
-                                     RMSLE=rmsle(test$cnt,pred1)))
-
-## model with all the variables
-mod2 <- lm(cnt ~., data=train)
-summary(mod2)
-
-pred2 <- predict(mod2,newdata=test)
-rmse(test$cnt,pred2)
-rmsle(test$cnt,pred2)
-err_res <- rbind(err_res, data.frame(Name="Extended Linear regression", Model="mod2", 
-                                     RMSE=rmse(test$cnt,pred2), 
-                                     RMSLE=rmsle(test$cnt,pred2)))
-
-#######################  Desicion trees ###################################################################
-
-library(tree)
-library(rpart)
-
-mod3 <- tree(cnt ~., data=train)
-mod3
-
-pred3 <- predict(mod3,newdata=test)
-rmse(test$cnt,pred3)
-rmsle(test$cnt,pred3)
-err_res <- rbind(err_res, data.frame(Name="Decision Trees-tree", Model="mod3", 
-                                     RMSE=rmse(test$cnt,pred3), 
-                                     RMSLE=rmsle(test$cnt,pred3)))
-
-
-
-mod4 <- rpart(cnt ~., data=train)
-mod4
-
-pred4 <- predict(mod4,newdata=test)
-rmse(test$cnt,pred4)
-rmsle(test$cnt,pred4)
-err_res <- rbind(err_res, data.frame(Name="Decision Trees-rpart", Model="mod4", 
-                                     RMSE=rmse(test$cnt,pred4), 
-                                     RMSLE=rmsle(test$cnt,pred4)))
-err_res
-
-#######################  Random Forest ###################################################################
-library(randomForest)
-library(ranger)
-
-mod5 <- randomForest(cnt ~., data=train)
-mod5
-
-pred5 <- predict(mod5,newdata=test)
-rmse(test$cnt,pred5)
-rmsle(test$cnt,pred5)
-
-
-
-err_res <- rbind(err_res, data.frame(Name="RandomForest", Model="mod5", 
-                                     RMSE=rmse(test$cnt,pred5), 
-                                     RMSLE=rmsle(test$cnt,pred5)))
-
-
-mod6 <- ranger(cnt ~., data=train)
-mod6
-
-pred6 <- predict(mod6,data=test)
-#head(pred6)
-rmse(test$cnt,pred6$predictions)
-rmsle(test$cnt,pred6$predictions)
-err_res <- rbind(err_res, data.frame(Name="RandomForest (ranger)", Model="mod6", 
-                                     RMSE=rmse(test$cnt,pred6$predictions), 
-                                     RMSLE=rmsle(test$cnt,pred6$predictions)))
-
-
-
-#######################  XGBoost ###################################################################
-#install.packages("xgboost")
-library(xgboost)
-
-train1 <- Matrix::sparse.model.matrix(cnt ~ .-1, data = train)
-test1 <- Matrix::sparse.model.matrix(cnt ~ .-1, data = test)
-
-X_train <- train1
-y_train <- train$cnt
-mod7 <- xgboost(data=X_train,label=y_train, nrounds=300,print_every_n = 10)
-
-X_test <- test1
-y_test <- test$cnt
-
-pred7 <- predict(mod7,newdata=X_test)
-rmse(y_test,pred7)
-rmsle(y_test,pred7)
-err_res <- rbind(err_res, data.frame(Name="XGBoost", Model="mod7", 
-                                     RMSE=rmse(test$cnt,pred7), 
-                                     RMSLE=rmsle(test$cnt,pred7)))
-
-#######################  kNN ###################################################################
-
-### adaboost needs that values to be normalized
-min_max <- function(x) { (x -min(x))/(max(x)-min(x))   }
-
-X_train <- sapply(data.frame(as.matrix(train1)),min_max)
-X_test <- sapply(data.frame(as.matrix(test1)),min_max)
-
-summary(X_train)
-
-library(class)
-mod8 <- knn(X_train,X_test,cl=train$cnt)
-
-str(mod8)
-
-pred8 <- as.numeric(as.character(mod8))
-
-rmse(test$cnt,pred8)
-rmsle(test$cnt,pred8)
-err_res <- rbind(err_res, data.frame(Name="kNN", Model="mod8", 
-                                     RMSE=rmse(test$cnt,pred8), 
-                                     RMSLE=rmsle(test$cnt,pred8)))
-
-#######################  SVM ###################################################################
-
-#install.packages("liquidSVM")
-library(liquidSVM)
-
-mod9 <- svm(cnt ~., train)
-
-pred9 <- predict(mod9, newdata=test)
-
-rmse(test$cnt,pred9)
-rmsle(test$cnt,pred9)
-err_res <- rbind(err_res, data.frame(Name="SVM", Model="mod9", 
-                                     RMSE=rmse(test$cnt,pred9), 
-                                     RMSLE=rmsle(test$cnt,pred9)))
-
-err_res
 ##########################################################################################
 # Upload the real test
 ##########################################################################################
 
 pred.res<-NULL
 pred.res$id<-tdf4$id
-pred.res$cnt<-round(predict(mod9, newdata=tdf4))
 
-write.csv(file = "result_SVM_wo_unsuperwised_columns.csv", pred.res, row.names = FALSE)
+tdf.pred<-tdf4[ , !(names(tdf4) %in% drops)]
+
+pred.res$cnt<-round(predict(mod9, newdata=tdf.pred))
+
+write.csv(file = "result_SVM_hcluster_no_aheat_no_out179.csv", pred.res, row.names = FALSE)
+
+dim(df4)
+#------------------------------------------------------------------------------------------
+
+dim(tdf4)
+
+pred.res<-NULL
+pred.res$id<-tdf4$id
+tdf.pred<-tdf4[ , !(names(tdf4) %in% drops)]
+
+pp<-predict(mod6, data=tdf.pred)
+pred.res$cnt<-round(pp$predictions)
+
+
+summary(test)
+summary(tdf.pred)
+
+
+write.csv(file = "result_Ranger_hcluster_factorized_columns_no_atemp_158.csv", pred.res, row.names = FALSE)
 
 #------------------------------------------------------------------------------------------
 
 pred.res<-NULL
 pred.res$id<-tdf4$id
-pred.res$cnt<-round(predict(mod7, newdata=as.matrix(tdf4)))
+tdf.pred<-tdf4[ , !(names(tdf4) %in% drops)]
 
-write.csv(file = "result_XBoost_wo_unsuperwised_columns.csv", pred.res, row.names = FALSE)
+dim(tdf.pred)
+
+pred.res$cnt<-round(predict(mod5, newdata=tdf.pred))
+
+length(pred.res$cnt)
+
+dim(pred.res)
+
+summary(test)
+summary(pred.res)
+
+head(pred.res)
+
+write.csv(file = "result_RF_hcluster_factorized_columns_172.csv", pred.res, row.names = FALSE)
+
+#------------------------------------------------------------------------------------------
+
+
+
+pred.res<-NULL
+pred.res$id<-tdf4$id
+tdf.pred<-tdf4[ , !(names(tdf4) %in% drops)]
+pred.res$cnt<-round(predict(mod7, newdata=as.matrix(tdf.pred)))
+
+write.csv(file = "result_XBoost_with hcluster_factorized_columns.csv", pred.res, row.names = FALSE)
 

@@ -328,6 +328,20 @@ dim(df)
 
 str(df)
 
+bx.hum<-boxplot(df$hum)
+df[df$hum %in% bx.hum$out, 'hum']<-NA
+
+bx.windspeed<-boxplot(df$windspeed)
+df[df$windspeed %in% bx.windspeed$out, 'windspeed']<-NA
+
+df<-na.omit(df)
+
+dim(dd)
+
+require(MissMech)
+miss1 <- TestMCARNormality(data=as.matrix(df[c('hum', 'windspeed')]), del.lesscases = 3)
+
+
 head(df)
 
 
